@@ -1,5 +1,5 @@
 [Unit]
-Description=Home MCP unprivileged isolated runner
+Description=Home MCP unprivileged isolated runner and task manager
 Requires=home-mcp-runner.socket
 After=home-mcp-runner.socket
 
@@ -14,16 +14,17 @@ UMask=0077
 Restart=on-failure
 RestartSec=5
 KillMode=control-group
-TimeoutStopSec=10
+TimeoutStopSec=15
 NoNewPrivileges=true
 CapabilityBoundingSet=
 AmbientCapabilities=
 ProtectSystem=strict
-ReadWritePaths=/mnt/storage/dev
+ReadWritePaths=/mnt/storage/dev /var/lib/home-mcp-runner
 ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true
 PrivateNetwork=true
+InaccessiblePaths=-/var/lib/home-mcp/private -/var/lib/home-mcp-owner -/var/lib/home-mcp-broker -/run/home-mcp-broker.sock -/var/run/docker.sock
 ProtectControlGroups=true
 ProtectKernelModules=true
 ProtectKernelLogs=true
@@ -37,8 +38,5 @@ MemoryMax=2G
 CPUQuota=200%
 LimitNOFILE=1024
 LimitFSIZE=268435456
-# Do not add docker/sudo groups or Docker sockets.
-# Do not set RestrictNamespaces=true or ProtectKernelTunables=true here:
-# unprivileged bubblewrap must create user namespaces and adjust its OWN
-# namespaced max_user_namespaces. The payload gets a separate syscall filter.
-# The real sandbox probe must pass before this service accepts operations.
+# No docker/sudo/control groups. Payloads receive a separate syscall filter.
+# Do not block user namespaces or the sandbox's own namespaced sysctls here.

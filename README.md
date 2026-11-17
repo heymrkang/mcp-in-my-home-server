@@ -1,58 +1,57 @@
 # Home MCP
 
-ChatGPT에서 개인 홈 서버의 파일과 명령을 다룬다. 별도 채팅 UI·AI 계정 래퍼·스케줄러는 만들지 않는다.
+ChatGPT에서 홈 서버의 파일·명령·Git·빌드·컨테이너·서비스를 다루는 개인용 MCP다. 새 채팅 UI와 스케줄러는 만들지 않는다.
 
-## 현재: 1단계 소스 구현 완료
+## 진행 상태
 
-| 도구 | 기능 |
+| 단계 | 상태 |
 | --- | --- |
-| workspace_status | 작업장·읽기 허용 경로·실행기 준비 상태 |
-| files_list | 파일 목록 |
-| files_read | 파일 읽기와 수정 전 해시 확인 |
-| files_write | 파일 생성·명시적 덮어쓰기 |
-| files_mkdir | 폴더 생성 |
-| terminal_run | 제한된 환경에서 짧은 명령 실행 |
+| 1. 인증·기본 파일·짧은 명령·작업 공간 격리 | 소스 반영 |
+| 2. 긴 작업·Git·관리 작업·별도 승인 | 소스 반영 |
+| 3. 설치/업데이트 명령·도메인 연결·실제 검증 | 남음 |
 
-인증은 ChatGPT 연결용 OAuth이며, 명령 실행기는 로그인 정보를 가진 프로세스와 별도 계정이다. 기본 작업장은 `/mnt/storage/dev`다. 소스 폴더 `/mnt/storage/dev/server`는 실행 환경에서 가려져 수정할 수 없다. 다른 폴더는 관리자 설정의 읽기 허용 목록만 보여준다.
+**현재는 설치·실행·보안 테스트 미검증 상태다. 3단계 전에는 서비스 파일을 수동으로 적용하지 않는다.**
 
-**아직 서버 설치·실계정 연결·실행 검증은 하지 않았다.** 1단계의 짧은 명령은 60초 이하이고 외부 네트워크·root·Docker 제어는 없다. 이 상태를 최종 운영 설치로 오해하지 않는다.
+## 사용 방식
 
-## 총 3단계
+- 기본 작업장 `/mnt/storage/dev`는 일반 작업의 쓰기 범위다. 소스 전달 폴더 `/mnt/storage/dev/server`는 보호한다.
+- 파일/짧은 명령은 직접 호출하고 긴 빌드/테스트는 작업 번호로 상태·로그·결과를 조회한다.
+- 외부 경로 변경·Docker·서비스·네트워크 작업은 등록된 대상에만 별도 승인 요청을 만든다.
+- 승인 페이지에서 허용/거부를 결정한다. 제한된 비관리자 범위만 항상 허용할 수 있으며 root는 작업별 승인이다.
+- `.gitignore` 없이 소스·예제·설치 정의만 Git에 넣는다. 실제 암호·토큰·로그·DB·설치 의존성은 레포 밖에 둔다.
 
-1. **완료(소스):** 본인 인증, MCP 연결, 작업장 보호, 파일·짧은 명령.
-2. **예정:** Git/빌드의 통신 정책, 긴 작업 관리, Docker·서버 관리와 작업별 관리자 승인.
-3. **예정:** 설치·업데이트 명령 한 개, 서비스 자동 시작, 실제 HTTPS 연결과 검증.
+## 주소·포트
 
-최종적으로 이 레포를 `/mnt/storage/dev/server`에 받은 뒤 설치 명령을 실행한다. 실제 서비스 코드는 관리자 소유 `/opt/home-mcp`에 복사한다. 레포가 없어져도 설치된 서비스는 그 복사본으로 동작한다. Git 삭제 이후에는 Git 업데이트만 불가능하다.
-
-## 포트
-
-| 포트 | 용도 |
+| 용도 | 연결 |
 | --- | --- |
-| TCP 443 | 외부 HTTPS. 직접 연결이면 공유기 → 기존 HTTPS 프록시로 전달 |
-| TCP 80 | 인증서/리다이렉트 방식에 따라 사용. 무조건 추가로 열지 않음 |
-| 127.0.0.1:18790 | 내부 MCP. **포트포워딩하지 않음** |
+| MCP | `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp` → `127.0.0.1:18790` |
+| 승인 화면 | 같은 도메인의 `/approval/` → `127.0.0.1:18791` |
+| 외부 포워딩 | TCP 443 → 기존 HTTPS 프록시. 80은 인증서 방식에 따라 판단 |
+| 내부 포트 | **18790·18791은 포트포워딩하지 않는다** |
 
-목표 주소는 `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp`다. 기존 Coolify가 443을 사용한다면 두 번째 프록시로 덮어쓰지 않는다. 현재 도메인의 실제 연결 방식은 아직 확인하지 않았다. 자세한 기준은 `docs/NETWORK.md`에 있다.
+현재 프록시가 Coolify 컨테이너인지 호스트 프로세스인지는 아직 검증하지 않았다. 예제 Caddy를 기존 프록시와 함께 띄우지 않는다.
 
-## 저장 위치
+## 도구
 
-- 소스: `/mnt/storage/dev/server`
-- 실행 코드·가상환경: `/opt/home-mcp`
-- 관리자 정책: `/etc/home-mcp/config.json`
-- 실제 인증 DB·비밀번호 해시: `/var/lib/home-mcp/private`
-- 최초 연결 정보: `/var/lib/home-mcp/setup-credentials.json` (root 전용, 안전하게 보관 후 삭제)
-- 실행 이력: systemd journal. 명령 본문·파일 내용·비밀번호·토큰은 감사 로그에 기록하지 않는다.
+기존: workspace_status, files_list, files_read, files_write, files_mkdir, terminal_run.
 
-`.gitignore`는 만들지 않는다. 실제 비밀값, DB, 로그, 설치된 의존성은 애초에 레포 안에 생성하지 않는다. `requirements.txt`와 소스는 포함하지만 가상환경/배포판 바이너리를 Git에 넣는 구조는 아니다.
+2단계: task_start, task_status, task_list, task_cancel, git_local, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
 
-## 구현 문서
+관리 도구는 요청만으로 root를 열지 않는다. 다른 UID의 승인 웹 서비스와 root broker가 결정한다. 기본 관리 대상 목록은 비어 있으며 3단계에서 등록/설치 절차를 제공한다. 임의 root 셸은 제공하지 않는다.
 
-- `docs/PHASE1.md`: 범위, 인증 연결, 검증 항목과 미실행 상태
-- `docs/SECURITY.md`: 격리 경계와 주의사항
-- `docs/NETWORK.md`: 포트·프록시
-- `deploy/`: 자동 시작·프록시 정의. 아직 자동 설치 프로그램은 아님
-- `scripts/preflight.sh`: 변경 없는 사전 환경 조회
-- `tests/test_phase1.py`: 오프라인 검증 코드. 실행 결과는 아직 없음
+일반 셸은 오프라인이다. 승인된 네트워크 작업은 공인 IP 제한을 실제 커널에서 확인한 뒤 실행한다. 이 기능에는 cgroup v2/BPF 지원과 bpftool이 필요하다. unsupported 환경에서 제한을 없애는 fallback은 없다.
 
-현재 소스 기준은 Linux/systemd, Python 3.11+, bubblewrap의 `--disable-userns` 지원, libseccomp다. 해당 격리가 불가능하면 일반 호스트 셸로 대체하지 않고 실행을 거부한다.
+## 위치
+
+| 내용 | 위치 |
+| --- | --- |
+| 전달용 소스 | `/mnt/storage/dev/server` |
+| 관리자 소유 실행본·Python 환경 | `/opt/home-mcp` |
+| 관리자 정책 | `/etc/home-mcp/config.json`, `/etc/home-mcp/phase2.json` |
+| OAuth 인증 상태 | `/var/lib/home-mcp/private` |
+| 일반 작업 기록 | `/var/lib/home-mcp-runner` |
+| 승인·관리 실행 기록 | `/var/lib/home-mcp-broker` |
+| 승인 전용 비밀번호 해시 | `/var/lib/home-mcp-owner/private` |
+| 임시 승인 네트워크 작업 설정 | `/var/lib/home-mcp-network` |
+
+상세: `docs/PHASE2.md`, `docs/SECURITY.md`, `docs/NETWORK.md`. `docs/PHASE1.md`는 1단계 당시 범위이며 추가 기능은 PHASE2 문서가 우선한다. 단위 검증 코드도 포함하지만 아직 실행하지 않았다.

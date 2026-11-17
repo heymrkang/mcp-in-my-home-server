@@ -1,12 +1,13 @@
 [Unit]
 Description=Home MCP authenticated HTTP gateway
-Requires=home-mcp-runner.socket
-After=network.target home-mcp-runner.socket
+Requires=home-mcp-runner.socket home-mcp-broker.socket
+After=network.target home-mcp-runner.socket home-mcp-broker.socket
 
 [Service]
 Type=simple
 User=home-mcp
 Group=home-mcp
+SupplementaryGroups=home-mcp-control
 WorkingDirectory=/opt/home-mcp/app
 ExecStart=/opt/home-mcp/venv/bin/python -B -m homemcp.server
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
@@ -20,7 +21,7 @@ CapabilityBoundingSet=
 AmbientCapabilities=
 ProtectSystem=strict
 ReadWritePaths=/var/lib/home-mcp/private
-InaccessiblePaths=/mnt/storage/dev -/var/run/docker.sock
+InaccessiblePaths=/mnt/storage/dev -/var/run/docker.sock -/var/lib/home-mcp-owner -/var/lib/home-mcp-broker
 ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true

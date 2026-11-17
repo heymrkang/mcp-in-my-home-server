@@ -1,0 +1,38 @@
+[Unit]
+Description=Home MCP typed administrator broker
+Requires=home-mcp-broker.socket
+After=home-mcp-broker.socket network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/home-mcp/app
+ExecStart=/usr/bin/python3 -B -m homemcp.broker
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+UMask=0077
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=40
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/opt/home-mcp /etc/home-mcp /mnt/storage/dev/server
+InaccessiblePaths=-/var/lib/home-mcp/private -/var/lib/home-mcp-owner
+TasksMax=128
+MemoryMax=512M
+LimitNOFILE=1024
+# Deliberately a small root authority: typed targets only, no arbitrary root shell.
+# Host file writes and PID1/Docker RPC cannot run under ProtectSystem=strict.
+# The unprivileged command payload is NEVER executed in this unit.

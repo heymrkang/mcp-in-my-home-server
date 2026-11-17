@@ -1,0 +1,43 @@
+[Unit]
+Description=Home MCP owner-only approval website
+Requires=home-mcp-broker.socket
+After=network.target home-mcp-broker.socket
+
+[Service]
+Type=simple
+User=home-mcp-owner
+Group=home-mcp-owner
+SupplementaryGroups=home-mcp-control
+WorkingDirectory=/opt/home-mcp/app
+ExecStart=/opt/home-mcp/venv/bin/python -B -m homemcp.owner_web
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+UMask=0077
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET
+LockPersonality=true
+SystemCallArchitectures=native
+InaccessiblePaths=/mnt/storage/dev -/var/lib/home-mcp/private -/var/lib/home-mcp-broker -/var/run/docker.sock
+TasksMax=32
+MemoryMax=256M
+LimitNOFILE=512
+
+[Install]
+WantedBy=multi-user.target

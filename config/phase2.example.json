@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "task_timeout_seconds": 7200,
+  "max_active_tasks": 2,
+  "log_limit_bytes": 131072,
+  "request_ttl_seconds": 600,
+  "approval_ttl_seconds": 300,
+  "owner_port": 18791,
+  "docker_targets": [],
+  "systemd_units": [],
+  "external_files": [],
+  "egress_hosts": ["github.com", "objects.githubusercontent.com", "registry.npmjs.org", "pypi.org", "files.pythonhosted.org"]
+}

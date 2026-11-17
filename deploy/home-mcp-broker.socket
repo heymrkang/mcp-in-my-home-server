@@ -1,0 +1,13 @@
+[Unit]
+Description=Home MCP separate authority socket
+
+[Socket]
+ListenStream=/run/home-mcp-broker.sock
+SocketUser=root
+SocketGroup=home-mcp-control
+SocketMode=0660
+RemoveOnStop=true
+Service=home-mcp-broker.service
+
+[Install]
+WantedBy=sockets.target
