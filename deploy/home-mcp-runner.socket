@@ -1,0 +1,13 @@
+[Unit]
+Description=Home MCP private execution socket
+
+[Socket]
+ListenStream=/run/home-mcp-runner.sock
+SocketUser=home-mcp
+SocketGroup=home-mcp
+SocketMode=0600
+RemoveOnStop=true
+Service=home-mcp-runner.service
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,43 @@
+[Unit]
+Description=Home MCP authenticated HTTP gateway
+Requires=home-mcp-runner.socket
+After=network.target home-mcp-runner.socket
+
+[Service]
+Type=simple
+User=home-mcp
+Group=home-mcp
+WorkingDirectory=/opt/home-mcp/app
+ExecStart=/opt/home-mcp/venv/bin/python -B -m homemcp.server
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+UMask=0077
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/var/lib/home-mcp/private
+InaccessiblePaths=/mnt/storage/dev -/var/run/docker.sock
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET
+LockPersonality=true
+SystemCallArchitectures=native
+TasksMax=64
+MemoryMax=512M
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# EXAMPLE ONLY. Do not start a second 80/443 proxy alongside Coolify.
+# This assumes Caddy runs on the HOST, so 127.0.0.1 reaches the gateway.
+# A bridge-network container cannot use this upstream as-is.
+k9m2x7p4vq3b8z1.12190529.xyz {
+    @home_mcp path /mcp /oauth/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/* /health
+    handle @home_mcp {
+        reverse_proxy 127.0.0.1:18790 {
+            header_up Host k9m2x7p4vq3b8z1.12190529.xyz
+            flush_interval -1
+        }
+    }
+    # Replace this fallback with the EXISTING site's routing if this domain is in use.
+    handle {
+        respond "Not Found" 404
+    }
+    # Access logging is intentionally not enabled: OAuth URLs may carry state/code.
+}

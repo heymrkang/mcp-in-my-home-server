@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "public_origin": "https://k9m2x7p4vq3b8z1.12190529.xyz",
+  "workspace": "/mnt/storage/dev",
+  "source_checkout": "/mnt/storage/dev/server",
+  "listen_host": "127.0.0.1",
+  "listen_port": 18790,
+  "read_only_paths": ["/etc/os-release", "/etc/hostname"],
+  "oauth_redirect_uris": ["https://chatgpt.com/connector_platform_oauth_redirect"],
+  "command_timeout_seconds": 60,
+  "output_limit_bytes": 65536
+}

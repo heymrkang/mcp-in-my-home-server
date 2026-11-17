@@ -1,0 +1,44 @@
+[Unit]
+Description=Home MCP unprivileged isolated runner
+Requires=home-mcp-runner.socket
+After=home-mcp-runner.socket
+
+[Service]
+Type=simple
+User=home-mcp-runner
+Group=home-mcp-runner
+WorkingDirectory=/opt/home-mcp/app
+ExecStart=/usr/bin/python3 -B -m homemcp.runner
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+UMask=0077
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=10
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/mnt/storage/dev
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+TasksMax=256
+MemoryMax=2G
+CPUQuota=200%
+LimitNOFILE=1024
+LimitFSIZE=268435456
+# Do not add docker/sudo groups or Docker sockets.
+# Do not set RestrictNamespaces=true or ProtectKernelTunables=true here:
+# unprivileged bubblewrap must create user namespaces and adjust its OWN
+# namespaced max_user_namespaces. The payload gets a separate syscall filter.
+# The real sandbox probe must pass before this service accepts operations.

@@ -1,0 +1,4 @@
+# Official MCP SDK, stable 1.x maintenance version verified at implementation time.
+# Install into /opt/home-mcp/venv, never inside the source checkout.
+mcp==1.30.0
+# Transitive dependencies are resolved by pip; this is not a full reproducible lock.
