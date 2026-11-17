@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Read-only prerequisites report. Does not install, open ports or change permissions.
 set -euo pipefail
-printf 'Home MCP prerequisite report (not a security/integration pass)\n'
+printf 'Home MCP phase-3 prerequisite report (not a security/integration pass)\n'
 uname -srm
 command -v systemctl >/dev/null || { echo 'systemd required'; exit 1; }
 python3 -B - <<'PY'
@@ -14,10 +14,12 @@ print('libseccomp: found')
 PY
 command -v bwrap >/dev/null || { echo 'bubblewrap required'; exit 1; }
 bwrap --version
-bwrap --help | grep -q -- '--disable-userns' || { echo 'bubblewrap --disable-userns required'; exit 1; }
-printf '\nCurrent TCP listeners (do not replace an existing HTTPS proxy):\n'
-if command -v ss >/dev/null; then
-    ss -ltn | awk 'NR==1 || $4 ~ /:(80|443|18790)$/'
-fi
-printf '\nExpected persistent workspace: /mnt/storage/dev\nSource checkout: /mnt/storage/dev/server\n'
-printf 'Final install and actual namespace checks belong to phase 3.\n'
+bwrap --help | grep -- '--disable-userns' >/dev/null || { echo 'bubblewrap --disable-userns required'; exit 1; }
+bwrap --help | grep -- '--assert-userns-disabled' >/dev/null || { echo 'bubblewrap --assert-userns-disabled required'; exit 1; }
+test -e /sys/fs/cgroup/cgroup.controllers || { echo 'cgroup v2 required'; exit 1; }
+if command -v bpftool >/dev/null; then bpftool version; else echo 'bpftool missing: approved network jobs unavailable'; fi
+printf '\nCurrent TCP listeners (existing HTTPS proxy must remain):\n'
+if command -v ss >/dev/null; then ss -ltn | awk 'NR==1 || $4 ~ /:(80|443|18790|18791)$/'; fi
+printf '\nWorkspace: /mnt/storage/dev\nCheckout: /mnt/storage/dev/server\n'
+printf 'This report does not execute a sandbox or test ChatGPT pairing.\n'
+printf 'Install: sudo bash scripts/install.sh\nAfter install: sudo home-mcp verify --public\n'

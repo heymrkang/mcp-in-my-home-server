@@ -1,57 +1,81 @@
 # Home MCP
 
-ChatGPT에서 홈 서버의 파일·명령·Git·빌드·컨테이너·서비스를 다루는 개인용 MCP다. 새 채팅 UI와 스케줄러는 만들지 않는다.
+ChatGPT에서 개인 홈 서버의 파일·명령·Git·빌드·등록된 관리 작업을 다루는 MCP다. 별도 채팅 UI나 스케줄러를 만들지 않으며 기존 Agent Hub를 변경하지 않는다.
 
 ## 진행 상태
 
 | 단계 | 상태 |
 | --- | --- |
-| 1. 인증·기본 파일·짧은 명령·작업 공간 격리 | 소스 반영 |
-| 2. 긴 작업·Git·관리 작업·별도 승인 | 소스 반영 |
-| 3. 설치/업데이트 명령·도메인 연결·실제 검증 | 남음 |
+| 1. OAuth·파일·짧은 명령·격리 | 소스 반영 |
+| 2. 긴 작업·Git·관리자 승인 | 소스 반영 |
+| 3. 설치·업데이트·프록시 연결·검증 명령 | 소스 반영, 실제 서버 검증 대기 |
 
-**현재는 설치·실행·보안 테스트 미검증 상태다. 3단계 전에는 서비스 파일을 수동으로 적용하지 않는다.**
+**설치 코드가 존재한다는 뜻이다. 실기기 설치, ChatGPT 연결, 보안 테스트 통과를 주장하지 않는다.**
 
-## 사용 방식
+## 설치
 
-- 기본 작업장 `/mnt/storage/dev`는 일반 작업의 쓰기 범위다. 소스 전달 폴더 `/mnt/storage/dev/server`는 보호한다.
-- 파일/짧은 명령은 직접 호출하고 긴 빌드/테스트는 작업 번호로 상태·로그·결과를 조회한다.
-- 외부 경로 변경·Docker·서비스·네트워크 작업은 등록된 대상에만 별도 승인 요청을 만든다.
-- 승인 페이지에서 허용/거부를 결정한다. 제한된 비관리자 범위만 항상 허용할 수 있으며 root는 작업별 승인이다.
-- `.gitignore` 없이 소스·예제·설치 정의만 Git에 넣는다. 실제 암호·토큰·로그·DB·설치 의존성은 레포 밖에 둔다.
+Linux/systemd, Python 3.11+, cgroup v2가 필요하다. Debian/Ubuntu 패키지 설치와 기존 Coolify Traefik 연결을 지원한다. rootful Docker가 아닌 환경이나 다른 프록시는 자동으로 바꾸지 않는다.
 
-## 주소·포트
+저장소를 처음 받을 때:
 
-| 용도 | 연결 |
+```bash
+sudo mkdir -p /mnt/storage/dev
+sudo git clone https://github.com/heymrkang/mcp-in-my-home-server.git /mnt/storage/dev/server
+sudo bash /mnt/storage/dev/server/scripts/install.sh
+```
+
+이미 받았다면 `git pull --ff-only`로 최신 소스를 받은 뒤 같은 설치 명령을 실행한다. 설치 확인 질문에 yes를 입력한다. 패키지 설치 없이 준비된 호스트에 적용하려면 `--no-packages`를 붙인다.
+
+설치 후:
+
+```bash
+sudo home-mcp status
+sudo home-mcp verify --public
+sudo home-mcp update
+sudo home-mcp rollback
+```
+
+update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행본만 교체한다. rollback은 코드용이며 DB나 외부 변경을 되돌리지 않는다. 진행 작업이 있으면 먼저 끝낸다. 설치 절차·실패 복구·고급 옵션은 **docs/PHASE3.md**에 있다.
+
+## 연결
+
+| 용도 | 주소/방식 |
 | --- | --- |
-| MCP | `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp` → `127.0.0.1:18790` |
-| 승인 화면 | 같은 도메인의 `/approval/` → `127.0.0.1:18791` |
-| 외부 포워딩 | TCP 443 → 기존 HTTPS 프록시. 80은 인증서 방식에 따라 판단 |
-| 내부 포트 | **18790·18791은 포트포워딩하지 않는다** |
+| MCP | `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp` |
+| 별도 사용자 승인 | 같은 도메인의 `/approval/` |
+| 외부 HTTPS | 기존 Coolify Traefik 443 유지 |
+| 내부 HTTP | 호스트 `127.0.0.1:18790`, `127.0.0.1:18791` |
+| 컨테이너 연결 | 비관리자 중계 컨테이너와 UNIX socket bridge |
 
-현재 프록시가 Coolify 컨테이너인지 호스트 프로세스인지는 아직 검증하지 않았다. 예제 Caddy를 기존 프록시와 함께 띄우지 않는다.
+18790/18791은 포트포워딩하지 않는다. 설치기는 DNS/공유기/기존 프록시 구성을 변경하지 않는다. 도메인이 기존 HTTPS 프록시로 연결돼 있어야 한다. 중계 컨테이너에는 공개 ports와 Docker socket을 주지 않는다. 기존 Coolify 앱을 삭제하거나 새 앱의 볼륨을 수동으로 만들 필요 없다.
 
-## 도구
+최초 인증정보는 `/var/lib/home-mcp/setup-credentials.json`, 승인 비밀번호는 `/var/lib/home-mcp/phase2-setup-credentials.json`에 root 전용으로 생성한다. 원문은 Git·설치 로그·MCP 응답에 넣지 않는다. ChatGPT 연결 설정의 고정 OAuth client 항목에 client_id/client_secret을 입력하고 실제 OAuth 연결을 확인한다. 비밀번호·secret을 채팅에 붙이지 않는다.
 
-기존: workspace_status, files_list, files_read, files_write, files_mkdir, terminal_run.
+## 도구와 권한
 
-2단계: task_start, task_status, task_list, task_cancel, git_local, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
+기본: workspace_status, files_list, files_read, files_write, files_mkdir, terminal_run.
 
-관리 도구는 요청만으로 root를 열지 않는다. 다른 UID의 승인 웹 서비스와 root broker가 결정한다. 기본 관리 대상 목록은 비어 있으며 3단계에서 등록/설치 절차를 제공한다. 임의 root 셸은 제공하지 않는다.
+확장: task_start, task_status, task_list, task_cancel, git_local, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
 
-일반 셸은 오프라인이다. 승인된 네트워크 작업은 공인 IP 제한을 실제 커널에서 확인한 뒤 실행한다. 이 기능에는 cgroup v2/BPF 지원과 bpftool이 필요하다. unsupported 환경에서 제한을 없애는 fallback은 없다.
+일반 작업장은 `/mnt/storage/dev`이며 소스 폴더 `server`는 작업에서 보호한다. 일반 셸은 오프라인·비관리자다. 긴 작업은 ID로 조회하고 중단한다. 외부 파일·Docker·서비스·네트워크 작업은 등록된 범위와 별도 승인만 허용한다. 임의 root 셸이나 Docker socket을 AI 작업에 주지 않는다.
 
-## 위치
+새 설치의 대상 목록은 비어 있다. 후보 정책을 로컬에서 편집하고 `sudo home-mcp policy /root/home-mcp-policy.json`으로 등록한다. 커널 BPF를 확인하지 못한 네트워크 작업은 실행하지 않는다. 개인 PAT/SSH 키를 일반 MCP 명령에 자동 전달하지 않으며, 무인 비공개 Git 원격 인증은 별도 미구현 범위다.
+
+## 저장 위치
 
 | 내용 | 위치 |
 | --- | --- |
-| 전달용 소스 | `/mnt/storage/dev/server` |
-| 관리자 소유 실행본·Python 환경 | `/opt/home-mcp` |
+| 전달 checkout | `/mnt/storage/dev/server` |
+| 실행본/venv/의존성 lock/중계 구성 | `/opt/home-mcp/releases/` |
+| 현재 실행 포인터 | `/opt/home-mcp/app`, `/opt/home-mcp/venv` |
 | 관리자 정책 | `/etc/home-mcp/config.json`, `/etc/home-mcp/phase2.json` |
-| OAuth 인증 상태 | `/var/lib/home-mcp/private` |
-| 일반 작업 기록 | `/var/lib/home-mcp-runner` |
+| OAuth 상태 | `/var/lib/home-mcp/private` |
+| 작업 기록 | `/var/lib/home-mcp-runner` |
 | 승인·관리 실행 기록 | `/var/lib/home-mcp-broker` |
-| 승인 전용 비밀번호 해시 | `/var/lib/home-mcp-owner/private` |
-| 임시 승인 네트워크 작업 설정 | `/var/lib/home-mcp-network` |
+| 승인 비밀번호 해시 | `/var/lib/home-mcp-owner/private` |
+| 임시 승인 네트워크 실행 | `/var/lib/home-mcp-network` |
+| 설치 상태·이전 실행본 기록 | `/var/lib/home-mcp-installer` |
 
-상세: `docs/PHASE2.md`, `docs/SECURITY.md`, `docs/NETWORK.md`. `docs/PHASE1.md`는 1단계 당시 범위이며 추가 기능은 PHASE2 문서가 우선한다. 단위 검증 코드도 포함하지만 아직 실행하지 않았다.
+`.gitignore`를 만들지 않는다. 실제 비밀값·DB·로그·wheel·가상환경은 저장소 밖에 생성한다. 첫 설치에서 플랫폼별 의존성을 해석해 버전/해시를 기록하고 이후 재사용한다. 작성 시점에 실제 의존성 설치·빌드·테스트를 수행한 것은 아니다.
+
+문서: docs/PHASE3.md(현재 설치 절차), docs/PHASE2.md(관리/승인 계약), docs/PHASE1.md, docs/SECURITY.md. 과거 단계의 '설치기 미구현' 표시는 PHASE3의 현재 상태로 대체한다.

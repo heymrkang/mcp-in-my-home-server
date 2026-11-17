@@ -12,6 +12,14 @@ async def execute(identifier, action, payload):
     if action.startswith("docker."):
         identifier_value = payload["container_id"]
         prefix = ["/usr/bin/docker", "--host", "unix:///var/run/docker.sock", "--config", "/opt/home-mcp/empty"]
+        # Deployment creates a relay container. It must not become a self-management
+        # channel even if its ID was manually added to an administrator policy.
+        projection = '{"name":{{json .Name}},"managed":{{json (index .Config.Labels "io.home-mcp.managed")}}}'
+        inspected = await run(prefix + ["container", "inspect", "--format", projection, identifier_value], timeout=10, limit=4096)
+        require(inspected["ok"] and not inspected["truncated"]["stdout"], "DOCKER_TARGET_CHECK_FAILED")
+        target = json.loads(inspected["stdout"])
+        require(target.get("managed") != "true" and not any(name in str(target.get("name", "")).lower()
+                for name in ("home-mcp", "coolify", "agent-hub")), "PROTECTED_CONTAINER")
         if action == "docker.inspect":
             # Explicit projection: never disclose Config.Env, mounts' content or registry credentials.
             template = '{"id":{{json .Id}},"name":{{json .Name}},"image":{{json .Config.Image}},"state":{{json .State.Status}}}'

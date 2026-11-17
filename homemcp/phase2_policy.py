@@ -13,8 +13,10 @@ BROKER_STATE = "/var/lib/home-mcp-broker"
 OWNER_STATE = "/var/lib/home-mcp-owner/private"
 RUNNER_STATE = "/var/lib/home-mcp-runner"
 PROTECTED = (SOURCE, INSTALL, "/etc/home-mcp", "/var/lib/home-mcp", BROKER_STATE,
-             "/var/lib/home-mcp-owner", RUNNER_STATE, "/root", "/proc", "/sys", "/dev", "/run",
-             "/etc/shadow", "/etc/gshadow", "/etc/sudoers", "/etc/sudoers.d", "/etc/ssh", "/etc/ssl/private")
+             "/var/lib/home-mcp-owner", RUNNER_STATE, "/var/lib/home-mcp-installer", "/var/lib/home-mcp-network",
+             "/usr/local/sbin/home-mcp", "/root", "/proc", "/sys", "/dev", "/run",
+             "/etc/shadow", "/etc/gshadow", "/etc/sudoers", "/etc/sudoers.d", "/etc/ssh", "/etc/ssl/private",
+             "/etc/systemd", "/usr/lib/systemd", "/lib/systemd")
 
 
 def canonical(value):
@@ -44,8 +46,9 @@ def task_arguments(value, maximum):
     return {"command": command, "cwd": cwd, "timeout_seconds": timeout}
 
 
-def load_policy():
-    p = json.loads(admin_file("/etc/home-mcp/phase2.json"))
+def load_policy(path="/etc/home-mcp/phase2.json"):
+    # Only the local installer supplies a candidate path; runtime uses the fixed default.
+    p = json.loads(admin_file(path))
     keys = {"version", "task_timeout_seconds", "max_active_tasks", "log_limit_bytes", "request_ttl_seconds",
             "approval_ttl_seconds", "owner_port", "docker_targets", "systemd_units", "external_files", "egress_hosts"}
     require(isinstance(p, dict) and set(p) == keys and p["version"] == 1, "PHASE2_POLICY_INVALID")
@@ -64,6 +67,8 @@ def load_policy():
         path = row["path"]
         require(isinstance(path, str) and path.startswith("/") and path == os.path.normpath(path)
                 and len(path) <= 4096 and not any(c in path for c in "\0\r\n"), "FILE_POLICY_INVALID")
+        # Unit definitions and network gate/installer state are execution policy,
+        # not editable application data. An approval cannot authorize self-modification.
         require(not within(WORKSPACE, path) and not any(within(x, path) or within(path, x) for x in PROTECTED), "FILE_POLICY_PROTECTED")
         require(path not in seen, "DUPLICATE_FILE_POLICY")
         seen.add(path)
@@ -126,6 +131,5 @@ def grant_scope(action, normalized):
     if action == "file.write" and normalized.get("as_root") is False:
         return {"action": action, "path": normalized["path"], "as_root": False}
     if action == "network.run":
-        # Exact command, cwd, hosts and timeout: not 'all network' or 'all terminal'.
         return {"action": action, **{key: value for key, value in normalized.items() if key != "addresses"}}
     return None
