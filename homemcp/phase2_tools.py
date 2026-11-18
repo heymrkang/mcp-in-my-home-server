@@ -53,10 +53,21 @@ def register(mcp, security):
                 args[key] = value
         return await invoke(runner_call, "git_task", {"request_key": request_key, "task": args})
 
+    @mcp.tool(title="호스트 root·Docker 즉시 실행", annotations=external, meta=security)
+    async def host_run(command: str, cwd: str = "/", timeout_seconds: int = 60) -> CallToolResult:
+        """Run arbitrary commands on the host as root, without owner web approval.
+        Includes full Docker socket access via Docker CLI, Docker Compose, systemctl,
+        host files and services. Available to both OAuth and mobile API-key sessions.
+        Timeout is at most 120 seconds; output is bounded. Do not automatically
+        retry failed or uncertain commands, especially destructive changes."""
+        return await invoke(broker_call, "host_run",
+                            {"command": command, "cwd": cwd, "timeout_seconds": timeout_seconds})
+
     @mcp.tool(title="관리 가능 대상", annotations=read, meta=security)
     async def admin_catalog() -> CallToolResult:
         """Read administrator-registered container IDs, service units, exact external files and network hostnames.
-        Empty lists mean no targets are registered. You cannot expand this list or grant root via a tool."""
+        Empty lists mean no targets are registered for the legacy approval flow.
+        The separate host_run tool is unrestricted and needs no target registration."""
         return await invoke(broker_call, "admin_catalog", {})
 
     @mcp.tool(title="관리 권한 요청", annotations=external, meta=security)

@@ -53,13 +53,19 @@ update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행
 
 최초 인증정보는 `/var/lib/home-mcp/setup-credentials.json`, 승인 비밀번호는 `/var/lib/home-mcp/phase2-setup-credentials.json`에 root 전용으로 생성한다. 원문은 Git·설치 로그·MCP 응답에 넣지 않는다. ChatGPT 연결 설정의 고정 OAuth client 항목에 client_id/client_secret을 입력하고 실제 OAuth 연결을 확인한다. 비밀번호·secret을 채팅에 붙이지 않는다.
 
+## 인증된 MCP에서 root·Docker 즉시 실행
+
+사용자 요청에 따라 `host_run`은 OAuth/모바일 API 키 인증만으로 호스트 root 셸 명령을 실행한다. 웹 승인이나 사전 대상 등록이 필요 없다. root 브로커가 호스트 Docker 소켓에 접근하므로 `docker ps`, `docker compose`, `systemctl`, 시스템 파일 변경 등이 가능하다. 일반 Bubblewrap 실행기에 소켓을 직접 마운트하지는 않는다. 최대 120초 실행, stdout/stderr 각각 64KiB 제한. `host_run(command="id && docker ps")`로 확인한다.
+
+**주의:** 인증 키 탈취, 악성 웹/레포를 통한 프롬프트 인젝션, 잘못된 AI 도구 호출로 호스트 전체를 제어당할 수 있다. 파일·비밀번호·컨테이너를 포함한 모든 데이터가 영향받는다. 기존 관리자 승인 웹은 기존 `admin_request`에만 적용된다.
+
 ## 도구와 권한
 
 기본: workspace_status, files_list, files_read, files_write, files_mkdir, terminal_run.
 
-확장: task_start, task_status, task_list, task_cancel, git_local, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
+확장: task_start, task_status, task_list, task_cancel, git_local, host_run, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
 
-일반 작업장은 `/mnt/storage/dev`이며 `server`를 포함한 모든 하위 파일을 서비스 계정의 ACL 범위에서 읽고 쓸 수 있다. 일반 셸·긴 작업에서 인터넷을 사용할 수 있다. 비관리자 UID·파일시스템 격리는 유지한다. 긴 작업은 ID로 조회하고 중단한다. 작업장 밖 파일·Docker·서비스 관리 작업은 등록된 범위와 별도 승인만 허용한다. 임의 root 셸이나 Docker socket을 AI 작업에 주지 않는다.
+일반 작업장은 `/mnt/storage/dev`이며 `server`를 포함한 모든 하위 파일을 서비스 계정의 ACL 범위에서 읽고 쓸 수 있다. 일반 셸·긴 작업에서 인터넷을 사용할 수 있다. 비관리자 UID·파일시스템 격리는 유지한다. 긴 작업은 ID로 조회하고 중단한다. 작업장 밖 파일·Docker·서비스 관리 작업은 등록된 범위와 별도 승인만 허용한다. host_run은 root 셸과 Docker CLI를 호스트에서 사용할 수 있다.
 
 새 설치의 대상 목록은 비어 있다. 후보 정책을 로컬에서 편집하고 `sudo home-mcp policy /root/home-mcp-policy.json`으로 등록한다. 별도 승인형 network.run은 여전히 커널 BPF 검증을 요구한다. 일반 터미널의 인터넷은 별도 network.run을 사용할 필요가 없다. 개인 PAT/SSH 키를 일반 MCP 명령에 자동 전달하지 않으며, 무인 비공개 Git 원격 인증은 별도 미구현 범위다.
 

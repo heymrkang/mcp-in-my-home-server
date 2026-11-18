@@ -16,7 +16,7 @@ async def call(operation, arguments):
         _pid, uid, _gid = struct.unpack("3i", peer.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
         require(uid == 0, "BROKER_IDENTITY_REJECTED")
         await asyncio.wait_for(write_frame(writer, {"operation": operation, "arguments": arguments}), 5)
-        result = await asyncio.wait_for(read_frame(reader), 15)
+        result = await asyncio.wait_for(read_frame(reader), 135 if operation == "host_run" else 15)
         require(isinstance(result, dict) and type(result.get("ok")) is bool, "BROKER_RESPONSE_INVALID")
         return result
     except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError):

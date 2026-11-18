@@ -123,6 +123,14 @@ sudo python3 -B /mnt/storage/dev/server/scripts/manage.py rollback
 
 업데이트 후 테스트: `workspace_status`에서 `protected: []` 및 `network: enabled` 확인, `files_list(path="server")` 및 `terminal_run(command="curl -I https://example.com")` 확인. 실제 호스트/모바일 테스트는 소스 반영과 구분한다.
 
+## root·Docker 무승인 실행
+
+사용자가 명시적으로 요청한 `host_run(command, cwd="/", timeout_seconds=60)` 도구는 인증된 OAuth·Bearer MCP 클라이언트에서 별도 웹 승인 없이 root 브로커로 명령을 전달한다. 호스트에서 `/bin/bash -c`로 명령이 실행되며 Docker CLI/Compose는 호스트 `/var/run/docker.sock`에 접근한다. 실행 시간은 120초 이내, 출력은 각각 64KiB로 제한한다. 대용량 출력은 잘리며, 타임아웃 후 발생한 외부 효과는 취소되지 않는다.
+
+기존 admin_request, admin_execute, 소유자 승인 페이지는 남아 있지만 host_run에는 적용되지 않는다. 일반 파일·작업장 셸은 계속 비관리자 Bubblewrap 샌드박스에서 실행한다.
+
+보안 영향: 유효한 OAuth/모바일 API 키를 가진 주체나 프롬프트 인젝션으로 유도된 MCP 도구 호출은 서버 전체 root·Docker·시스템 파일을 제어할 수 있다. 실행한 명령은 되돌릴 수 없을 수 있다. `host_run(command="id && docker ps")`가 성공하면 호스트 권한을 확인할 수 있다.
+
 ## 관리 대상 등록
 
 새 설치는 컨테이너·서비스·외부 파일·통신 호스트를 모두 빈 목록으로 시작한다. 예제에 있는 GitHub/npm/PyPI 도메인을 설치만으로 자동 허용하지 않는다.

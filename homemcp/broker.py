@@ -12,6 +12,7 @@ from .approval_store import Approvals
 from .runner import read_frame, write_frame
 from .admin_executor import execute
 from .network_executor import recover_network
+from .host_exec import run_host, validate_command
 
 async def serve():
     require(os.geteuid() == 0, "ROOT_BROKER_REQUIRED")
@@ -59,10 +60,14 @@ async def serve():
                 return {"ok": True}
             require(False, "OWNER_RPC_REJECTED")
         require(uid == gateway, "BROKER_PEER_REJECTED")
+        if operation == "host_run":
+            validate_command(args)
+            return await run_host(args)
         if operation == "admin_catalog":
             return {"ok": True, "docker_targets": policy["docker_targets"], "systemd_units": policy["systemd_units"],
                     "external_files": policy["external_files"], "egress_hosts": policy["egress_hosts"],
-                    "root_shell": False, "approval_url": config.origin + "/approval/"}
+                    "root_shell": True, "docker_access": True, "host_run_approval": False,
+                    "approval_url": config.origin + "/approval/"}
         if operation == "admin_request":
             require(set(args) == {"request_key", "action", "parameters"}, "INVALID_ADMIN_REQUEST")
             require(isinstance(args["action"], str), "INVALID_ADMIN_ACTION")

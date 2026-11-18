@@ -65,6 +65,16 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaises(PolicyError):
                 git_arguments({"action": action})
 
+class HostRunTests(unittest.TestCase):
+    def test_validate_command(self):
+        from homemcp.host_exec import validate_command
+        self.assertEqual(validate_command({"command": "id && docker ps"}), ("id && docker ps", "/", 60))
+        for args in ({}, {"command": ""}, {"command": "echo hi", "timeout_seconds": 121},
+                     {"command": "echo hi", "cwd": "relative"}, {"command": "echo hi", "extra": True},
+                     {"command": "echo" + chr(0) + "bad"}):
+            with self.subTest(args=args), self.assertRaises(PolicyError):
+                validate_command(args)
+
 class LedgerTests(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:", isolation_level=None)

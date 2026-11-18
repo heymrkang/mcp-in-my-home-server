@@ -16,11 +16,11 @@ RestartSec=5
 KillMode=control-group
 TimeoutStopSec=40
 NoNewPrivileges=true
-ProtectHome=true
+ProtectHome=false
 PrivateTmp=true
-PrivateDevices=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
+PrivateDevices=false
+ProtectKernelTunables=false
+ProtectKernelModules=false
 ProtectKernelLogs=true
 ProtectClock=true
 RestrictRealtime=true
@@ -28,11 +28,10 @@ RestrictSUIDSGID=true
 LockPersonality=true
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-ReadOnlyPaths=/opt/home-mcp /etc/home-mcp /mnt/storage/dev/server
+# host_run has full host filesystem access as root.
 InaccessiblePaths=-/var/lib/home-mcp/private -/var/lib/home-mcp-owner
 TasksMax=128
 MemoryMax=512M
 LimitNOFILE=1024
-# Deliberately a small root authority: typed targets only, no arbitrary root shell.
-# Host file writes and PID1/Docker RPC cannot run under ProtectSystem=strict.
-# The unprivileged command payload is NEVER executed in this unit.
+# WARNING: authenticated MCP host_run has full root and Docker authority.
+# Existing admin_request still uses the separately approved ledger.
