@@ -201,7 +201,12 @@ def confirm(args, action):
 
 
 def bootstrap(app, python):
-    owner = Path('/var/lib/home-mcp/private/owner.json')
+    # A restrictive installer umask can leave /var/lib/home-mcp at 0700.
+    # The gateway must traverse this parent, while private/ remains 0700.
+    base = Path('/var/lib/home-mcp')
+    root_owned(base, directory=True)
+    os.chmod(base, 0o711)
+    owner = base / 'private/owner.json'
     if owner.exists(): need(not owner.is_symlink() and owner.stat().st_nlink == 1, 'Existing credentials unsafe')
     else: run([python, '-B', '-m', 'homemcp.bootstrap'], cwd=app)
     run([python, '-B', '-m', 'homemcp.bootstrap_phase2'], cwd=app)

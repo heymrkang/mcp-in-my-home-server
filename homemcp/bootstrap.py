@@ -28,6 +28,9 @@ def main():
     base = Path("/var/lib/home-mcp")
     base.mkdir(mode=0o711, parents=False, exist_ok=True)
     require(base.resolve() == base and base.stat().st_uid == 0 and base.stat().st_mode & 0o022 == 0, "STATE_PARENT_UNSAFE")
+    # mkdir(mode=0711) under umask 0077 actually creates 0700.
+    # Allow path traversal only; secrets stay in the 0700 private directory.
+    os.chmod(base, 0o711)
     state = Path(STATE)
     require(not state.is_symlink(), "STATE_SYMLINK_REJECTED")
     state.mkdir(mode=0o700, exist_ok=True)

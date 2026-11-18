@@ -93,6 +93,17 @@ def verify(public=False):
         result = json.loads(raw)
         need(result.get('ok') is True, 'Runner IPC/startup sandbox probe failed')
     check('services', units)
+    if results[-1]['result'] == 'FAIL':
+        # Downstream HTTP/IPC probes cannot succeed if the units are inactive.
+        for name in ['loopback_only', 'local_health_and_oauth_boundary', 'approval_page',
+                     'isolated_runner_startup', 'public_tls_routing_and_oauth', 'public_approval_route']:
+            if public or not name.startswith('public_'):
+                results.append({'check': name, 'result': 'SKIPPED', 'reason': 'services not active'})
+        results.extend([{'check': name, 'result': 'NOT_RUN'} for name in
+                        ['chatgpt_pairing', 'owner_approval_flow', 'network_job_bpf',
+                         'docker_service_mutations', 'reboot']])
+        print(json.dumps({'checks': results, 'complete_security_audit': False}, ensure_ascii=False, indent=2))
+        return False
     check('loopback_only', listener_scope)
     check('local_health_and_oauth_boundary', lambda: http_checks(f'http://127.0.0.1:{port}', origin))
     check('approval_page', owner)
