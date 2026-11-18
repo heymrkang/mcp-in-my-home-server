@@ -26,6 +26,10 @@ class InstallerHelpers(unittest.TestCase):
         self.assertIn('proxy_next_upstream off', config)
         self.assertIn('access_log off', config)
         self.assertIn('listen 8080', config)
+        for directive in ('client_body_temp_path', 'proxy_temp_path', 'fastcgi_temp_path',
+                          'uwsgi_temp_path', 'scgi_temp_path'):
+            self.assertIn(directive + ' /tmp/', config)
+        self.assertNotIn('/var/cache/nginx', config)
         self.assertNotIn('listen 443', config)
         self.assertNotIn('docker.sock', config)
         self.assertEqual(ENV['DOCKER_HOST'], 'unix:///var/run/docker.sock')

@@ -98,6 +98,9 @@ http {
   server_tokens off;
   client_body_temp_path /tmp/client;
   proxy_temp_path /tmp/proxy;
+  fastcgi_temp_path /tmp/fastcgi_temp;
+  uwsgi_temp_path /tmp/uwsgi_temp;
+  scgi_temp_path /tmp/scgi_temp;
   client_max_body_size 2m;
   client_body_timeout 20s;
   upstream gateway { server unix:/run/home-mcp-http/gateway.sock; }
