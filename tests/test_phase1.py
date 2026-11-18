@@ -126,5 +126,34 @@ class PathTests(unittest.TestCase):
                 operation.read_file({"path": "link.txt"}, [])
 
 
+
+class MobileAPIKeyTests(unittest.TestCase):
+    def test_hash_match_and_rejection(self):
+        from homemcp.api_key import matches
+        raw = "hmcp_" + "a" * 64
+        stored = hashlib.sha256(raw.encode()).hexdigest()
+        self.assertTrue(matches(raw, stored))
+        self.assertFalse(matches("hmcp_" + "b" * 64, stored))
+        self.assertFalse(matches("", stored))
+        self.assertFalse(matches("hmcp_" + "a" * 63, stored))
+        self.assertFalse(matches("any-oauth-access-token", stored))
+        self.assertFalse(matches(raw, None))
+
+    def test_missing_hash_disables_only_mobile_auth(self):
+        from homemcp.api_key import load_hash
+        with tempfile.TemporaryDirectory() as folder:
+            with patch("homemcp.api_key.HASH_FILE", Path(folder) / "absent.json"):
+                self.assertIsNone(load_hash())
+
+    def test_invalid_hash_file_is_rejected(self):
+        from homemcp.api_key import load_hash
+        with tempfile.TemporaryDirectory() as folder:
+            location = Path(folder) / "bad.json"
+            location.write_text('{"version":1,"sha256":"invalid"}')
+            location.chmod(0o600)
+            with patch("homemcp.api_key.HASH_FILE", location):
+                with self.assertRaises(PolicyError):
+                    load_hash()
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,8 +1,9 @@
-"""OAuth-protected Streamable HTTP gateway. No local shell or owner approval authority."""
+"""OAuth and optional static bearer protected MCP gateway. No owner approval authority."""
 from __future__ import annotations
 import json
 import os
 import pwd
+import time
 from pathlib import Path
 import uvicorn
 from mcp.server.auth.provider import AccessToken
@@ -14,6 +15,7 @@ from pydantic import AnyHttpUrl
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from .auth_store import AuthStore, read_owner
+from .api_key import load_hash, matches
 from .config import PolicyError, SCOPE, STATE, WORKSPACE, load_config, require
 from .http_guard import Guard
 from .oauth import OAuth
@@ -26,8 +28,13 @@ def create_app():
     require(os.geteuid() == pwd.getpwnam("home-mcp").pw_uid and os.geteuid() != 0, "GATEWAY_IDENTITY_REQUIRED")
     owner = read_owner()
     store = AuthStore(str(Path(STATE) / "oauth.sqlite3"), config, owner)
+    mobile_hash = load_hash()
     class Verifier:
         async def verify_token(self, token: str):
+            if matches(token, mobile_hash):
+                return AccessToken(token=token, client_id="home-mcp-mobile-key",
+                                   scopes=[SCOPE], expires_at=int(time.time()) + 3600,
+                                   resource=config.resource, subject="owner-mobile")
             record = store.access(token)
             if not record:
                 return None

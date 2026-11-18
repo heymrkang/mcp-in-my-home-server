@@ -308,6 +308,14 @@ def rollback(args):
     if PENDING.exists(): PENDING.unlink()
 
 
+def api_key_init():
+    need(CURRENT.exists() and not PENDING.exists(), 'Complete Home MCP installation before API key setup')
+    run([str(ROOT / 'venv/bin/python'), '-B', '-m', 'homemcp.bootstrap_api_key'], cwd=ROOT / 'app')
+    # The gateway loads the hash at startup; no other service restarts.
+    run(['systemctl', 'restart', 'home-mcp.service'])
+    print('OAuth remains enabled. Mobile Bearer key is active after gateway restart.')
+
+
 def policy_apply(args):
     current = read_json(CURRENT)
     need(not PENDING.exists(), 'Resolve interrupted installation before changing policy')
@@ -343,6 +351,7 @@ def main():
     child = sub.add_parser('rollback'); child.add_argument('--yes', action='store_true')
     child = sub.add_parser('policy'); child.add_argument('file'); child.add_argument('--yes', action='store_true')
     child = sub.add_parser('verify'); child.add_argument('--public', action='store_true')
+    child = sub.add_parser('api-key'); child.add_argument('action', choices=['init'])
     sub.add_parser('status'); sub.add_parser('preflight')
     args = parser.parse_args()
     try:
@@ -359,6 +368,7 @@ def main():
             elif args.command == 'rollback': rollback(args)
             elif args.command == 'policy': policy_apply(args)
             elif args.command == 'preflight': preflight()
+            elif args.command == 'api-key': api_key_init()
             elif args.command == 'status':
                 if CURRENT.exists():
                     state = read_json(CURRENT); print(json.dumps({key: state[key] for key in ['commit', 'origin', 'release', 'proxy']}, indent=2))

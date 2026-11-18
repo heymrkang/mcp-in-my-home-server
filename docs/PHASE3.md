@@ -66,6 +66,21 @@ MCP 주소: https://k9m2x7p4vq3b8z1.12190529.xyz/mcp
 
 ChatGPT에서 제공되는 사용자 MCP 연결 화면에 이 주소를 등록하고 OAuth를 선택한다. 고정 클라이언트를 사용하므로 client_id/client_secret을 연결 설정에 입력한다. 서버의 기본 허용 redirect는 https://chatgpt.com/connector_platform_oauth_redirect 이다. 실제 연결 화면에 표시되는 정확한 redirect가 다르면 /etc/home-mcp/config.json의 oauth_redirect_uris를 관리자 권한으로 수정하고 home-mcp.service만 재시작해야 한다. 와일드카드 redirect를 추가하지 않는다. 서비스·메타데이터 점검 통과와 실제 ChatGPT 인증/도구 호출 성공은 별개다.
 
+## 모바일 Bearer 인증 (OAuth 병행)
+
+기존 OAuth는 제거하지 않는다. MCP에 유효한 `Authorization: Bearer hmcp_...`가 전달되면 모바일 키의 SHA256 해시를 상수 시간 비교로 검증한다. 해당 키가 없으면 기존 OAuth 토큰 검증·OAuth 인증 챌린지를 그대로 사용한다. **잘못된 키를 보낸 요청을 익명으로 통과시키지 않는다.** 이 키는 MCP 도구에 OAuth와 동등한 접근 권한을 준다. 별도 관리자 승인 웹의 비밀번호는 대체하지 않는다.
+
+기존 설치에서 키를 사용하려면 먼저 일반 `sudo home-mcp update`로 이 기능을 포함한 새 버전을 적용한 다음 최초 한 번만 발급한다.
+
+```bash
+sudo home-mcp api-key init
+sudo cat /var/lib/home-mcp/mobile-api-key.json
+```
+
+해시 저장 파일은 `/var/lib/home-mcp/private/mobile-api-key.json`이며 `home-mcp` 계정만 읽는다. 위 복구 파일은 root만 읽는 원문이므로 안전한 비밀번호 관리 도구로 옮긴 뒤 보관/정리한다. 설정은 별도 key 파일이 없어도 OAuth가 그대로 실행되므로 기존 설치 업데이트 중 인증 중단을 방지한다. 키 발급 명령은 MCP 게이트웨이만 재시작한다. 원문 키를 잃어버린 경우 다른 키를 임의로 생성해 기존 해시를 덮어쓰지 말고 복구/회전 절차를 별도로 검토한다.
+
+모바일 앱에서 원격(HTTP/SSE), 프로토콜 자동, URL `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp`, HTTP Header `Authorization=Bearer <발급키>`를 사용한다. 외부 클라이언트가 Authorization 헤더를 중계하는지 확인해야 한다. ChatGPT의 OAuth 흐름과 모바일의 Bearer 흐름은 별도다. 실제 모바일 앱 연결 검증은 사용자 측에서 수행해야 한다.
+
 ## 업데이트·코드 롤백
 
 ```bash

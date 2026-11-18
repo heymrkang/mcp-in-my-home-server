@@ -39,6 +39,8 @@ update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행
 
 ## 연결
 
+모바일 원격 MCP 클라이언트는 선택적으로 별도 Bearer API 키로 인증할 수 있다. ChatGPT의 기존 OAuth는 유지된다. 설치 후 `sudo home-mcp api-key init`으로 생성하며, 원문은 `/var/lib/home-mcp/mobile-api-key.json`에 root 전용으로 보관한다. 모바일 앱 HTTP Header에 `Authorization=Bearer hmcp_...` 형식으로 입력한다. 기존에 발급한 OAuth 토큰과 Client ID/Secret은 변경하지 않는다. 외부 공개된 MCP이므로 키는 채팅이나 Git에 공유하지 않는다.
+
 | 용도 | 주소/방식 |
 | --- | --- |
 | MCP | `https://k9m2x7p4vq3b8z1.12190529.xyz/mcp` |
