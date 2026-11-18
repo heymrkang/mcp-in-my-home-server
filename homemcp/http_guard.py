@@ -1,4 +1,8 @@
-"""Bound all HTTP bodies and validate Host/Origin without trusting forwarded headers."""
+"""Bound HTTP bodies and validate Host/Origin without trusting forwarded headers.
+
+Use same-origin referrer policy: no-referrer can turn the Origin header into
+`null` on browser HTML form POST, breaking OAuth decision CSRF checks.
+"""
 import asyncio
 
 from starlette.responses import JSONResponse
@@ -6,7 +10,7 @@ from starlette.responses import JSONResponse
 from .config import Config
 
 HEADERS = [(b"cache-control", b"no-store"), (b"x-content-type-options", b"nosniff"),
-           (b"referrer-policy", b"no-referrer"), (b"x-frame-options", b"DENY"),
+           (b"referrer-policy", b"same-origin"), (b"x-frame-options", b"DENY"),
            (b"content-security-policy", b"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")]
 
 
