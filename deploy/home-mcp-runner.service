@@ -25,7 +25,8 @@ ReadWritePaths=/mnt/storage/dev /var/lib/home-mcp-runner
 ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true
-PrivateNetwork=true
+# Enables authenticated workspace network clients; other isolation remains.
+PrivateNetwork=false
 InaccessiblePaths=-/var/lib/home-mcp/private -/var/lib/home-mcp-owner -/var/lib/home-mcp-broker -/run/home-mcp-broker.sock -/var/run/docker.sock
 ProtectControlGroups=true
 ProtectKernelModules=true

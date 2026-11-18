@@ -100,9 +100,13 @@ class PathTests(unittest.TestCase):
         self.assertEqual(operation.target("example.txt", []), WORKSPACE + "/example.txt")
 
     def test_outside_paths_and_traversal(self):
-        for name in ("../etc/shadow", "/etc/shadow", "server/config.json", "a/../../escape"):
+        for name in ("../etc/shadow", "/etc/shadow", "a/../../escape"):
             with self.assertRaises(operation.Denied):
                 operation.target(name, [])
+
+    def test_source_is_workspace_path(self):
+        self.assertEqual(operation.target("server/README.md", []), WORKSPACE + "/server/README.md")
+        self.assertEqual(operation.target("server/README.md", [], writing=True), WORKSPACE + "/server/README.md")
 
     def test_read_permission_does_not_imply_write(self):
         self.assertEqual(operation.target("/etc/hostname", ["/etc/hostname"]), "/etc/hostname")
@@ -110,7 +114,7 @@ class PathTests(unittest.TestCase):
             operation.target("/etc/hostname", ["/etc/hostname"], writing=True)
 
     def test_file_create_edit_conflict_and_links(self):
-        with tempfile.TemporaryDirectory() as root, patch.object(operation, "ROOT", root), patch.object(operation, "PROTECTED", root + "/server"):
+        with tempfile.TemporaryDirectory() as root, patch.object(operation, "ROOT", root):
             first = operation.write_file({"path": "a.txt", "content": "one"}, [])
             self.assertEqual(operation.read_file({"path": "a.txt"}, [])["text"], "one")
             with self.assertRaises(FileExistsError):

@@ -119,8 +119,12 @@ def accounts():
 def workspace():
     no_links(WORKSPACE); no_links(SOURCE)
     need(SOURCE.is_dir(), 'Source checkout missing')
-    # Grant on this directory only. Do not recursively chown existing projects or other storage.
-    run(['setfacl', '-m', 'u:home-mcp-runner:rwx', WORKSPACE])
+    # Owner-approved full workspace ACL, including the source checkout.
+    # No symlink traversal, no filesystem crossing, no ownership changes.
+    run(['find', WORKSPACE, '-xdev', '(', '-type', 'f', '-o', '-type', 'd', ')',
+         '-exec', 'setfacl', '-m', 'u:home-mcp-runner:rwX', '{}', '+'], timeout=600)
+    run(['find', WORKSPACE, '-xdev', '-type', 'd', '-exec',
+         'setfacl', '-m', 'd:u:home-mcp-runner:rwx', '{}', '+'], timeout=600)
     for parent in list(WORKSPACE.parents)[:-1]:
         if not os.stat(parent).st_mode & 0o001:
             print(f'NOTE: runner traversal may need a local ACL on {parent}; parent permissions were not broadened.')

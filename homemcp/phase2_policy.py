@@ -40,7 +40,7 @@ def task_arguments(value, maximum):
     require(isinstance(cwd, str) and 0 < len(cwd) <= 4096 and ".." not in cwd.split("/")
             and not any(c in cwd for c in "\0\r\n"), "INVALID_CWD")
     cwd = os.path.normpath(cwd if cwd.startswith("/") else WORKSPACE + "/" + cwd)
-    require(within(WORKSPACE, cwd) and not within(SOURCE, cwd), "WORKSPACE_PATH_REQUIRED")
+    require(within(WORKSPACE, cwd), "WORKSPACE_PATH_REQUIRED")
     timeout = value.get("timeout_seconds", min(1800, maximum))
     require(type(timeout) is int and 1 <= timeout <= maximum, "INVALID_TIMEOUT")
     return {"command": command, "cwd": cwd, "timeout_seconds": timeout}

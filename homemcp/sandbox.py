@@ -16,8 +16,8 @@ OPERATIONS = {"files_list", "files_read", "files_write", "files_mkdir", "termina
 
 
 def seccomp_file():
-    # Block socket access as well as networking: a read-only bind containing a
-    # Docker/other UNIX socket must not become a host-control side channel.
+    # Permit network sockets; host control sockets remain unmounted.
+    # Maintain restrictions on namespace, mount, kernel and ptrace syscalls.
     lib = ctypes.CDLL("libseccomp.so.2", use_errno=True)
     lib.seccomp_init.argtypes = [ctypes.c_uint32]
     lib.seccomp_init.restype = ctypes.c_void_p
@@ -32,7 +32,7 @@ def seccomp_file():
     require(bool(context), "SECCOMP_UNAVAILABLE")
     output = tempfile.TemporaryFile()
     try:
-        names = ["socket", "socketpair", "connect", "sendto", "sendmsg", "sendmmsg", "io_uring_setup",
+        names = ["io_uring_setup",
                  "mount", "umount2", "pivot_root", "unshare", "setns", "ptrace", "process_vm_readv",
                  "process_vm_writev", "bpf", "perf_event_open", "keyctl", "add_key", "request_key",
                  "open_by_handle_at", "name_to_handle_at", "kexec_load", "kexec_file_load", "reboot",
@@ -82,7 +82,7 @@ def ensure_host_layout(config: Config) -> None:
 
 def command(config: Config, seccomp_fd: int) -> list[str]:
     ensure_host_layout(config)
-    args = ["/usr/bin/bwrap", "--unshare-all", "--unshare-user", "--disable-userns", "--assert-userns-disabled",
+    args = ["/usr/bin/bwrap", "--unshare-all", "--share-net", "--unshare-user", "--disable-userns", "--assert-userns-disabled",
             "--die-with-parent", "--new-session", "--cap-drop", "ALL", "--clearenv",
             "--ro-bind", "/usr", "/usr"]
     for root in ("/bin", "/sbin", "/lib", "/lib64"):
@@ -94,7 +94,15 @@ def command(config: Config, seccomp_fd: int) -> list[str]:
     args += ["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--dir", "/tmp/home", "--dir", "/etc"]
     if os.path.isfile("/etc/ld.so.cache"):
         args += ["--ro-bind", "/etc/ld.so.cache", "/etc/ld.so.cache"]
-    args += ["--bind", WORKSPACE, WORKSPACE, "--ro-bind", INSTALL + "/empty", SOURCE]
+    # Only workspace is writable. Real DNS and CA files are read-only.
+    args += ["--bind", WORKSPACE, WORKSPACE]
+    for path in ("/etc/resolv.conf", "/etc/hosts", "/etc/nsswitch.conf",
+                 "/etc/gai.conf", "/etc/ssl/certs"):
+        if os.path.exists(path):
+            actual = os.path.realpath(path)
+            require(os.path.isfile(actual) or os.path.isdir(actual),
+                    "NETWORK_CONFIGURATION_INVALID")
+            args += ["--ro-bind", actual, path]
     for item in config.read_only:
         args += ["--ro-bind", os.path.realpath(item), item]
     args += ["--ro-bind", INSTALL + "/app/homemcp/operation.py", "/.home-mcp-operation.py",
@@ -155,7 +163,7 @@ async def execute(config: Config, request: dict) -> dict:
                 return {"ok": process.returncode == 0, "exit_code": process.returncode,
                         "stdout": captured["stdout"].decode("utf-8", "replace"),
                         "stderr": captured["stderr"].decode("utf-8", "replace"), "truncated": truncated,
-                        "network": "disabled", "root": False}
+                        "network": "enabled", "root": False}
             require(process.returncode == 0 and not truncated["stdout"], "SANDBOX_OR_FILE_OPERATION_FAILED")
             result = json.loads(captured["stdout"])
             require(isinstance(result, dict) and isinstance(result.get("ok"), bool), "INVALID_WORKER_RESPONSE")

@@ -21,9 +21,10 @@ POLICY = {"task_timeout_seconds": 7200, "max_active_tasks": 2, "log_limit_bytes"
 class PolicyTests(unittest.TestCase):
     def test_task_paths_and_time(self):
         self.assertEqual(task_arguments({"command": "true", "cwd": "project"}, 7200)["cwd"], "/mnt/storage/dev/project")
-        for path in ("../etc", "/etc", "server", "server/file"):
+        for path in ("../etc", "/etc"):
             with self.subTest(path=path), self.assertRaises(PolicyError):
                 task_arguments({"command": "true", "cwd": path}, 7200)
+        self.assertEqual(task_arguments({"command": "true", "cwd": "server"}, 7200)["cwd"], "/mnt/storage/dev/server")
         with self.assertRaises(PolicyError):
             task_arguments({"command": "true", "timeout_seconds": 7201}, 7200)
 

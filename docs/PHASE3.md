@@ -113,6 +113,16 @@ sudo python3 -B /mnt/storage/dev/server/scripts/manage.py rollback
 
 이전 release/의존성 파일을 자동 삭제하지 않는다. 장기간 운영 후 정리할 때 current/previous 및 재사용 dependency_bundle을 제외해야 한다.
 
+## 일반 작업장 전체 읽기·쓰기 및 인터넷 허용
+
+사용자 요청으로 일반 MCP 명령/장기 작업의 쓰기 범위를 `/mnt/storage/dev` 전체(소스 `server` 포함)로 확장한다. 업데이트 시 `home-mcp-runner` UID 전용 rwX ACL 및 하위 디렉토리 기본 ACL을 반영한다. 심볼릭 링크·다른 마운트·루트 밖의 경로를 따라가서 ACL을 확장하지 않는다. 런타임 실행본 `/opt/home-mcp`, OAuth/API 키 상태, 관리자 정책, Docker 소켓과 호스트 루트는 열지 않는다.
+
+일반 `terminal_run` 및 `task_start`는 `--share-net`으로 인터넷을 사용할 수 있으며, DNS/CA 파일만 읽기 전용으로 추가 제공한다. 기존 Bubblewrap 파일시스템/프로세스 격리와 비관리자 계정·Seccomp 위험 시스템콜 차단은 유지한다. 일반 Git 원격 명령과 패키지 다운로드는 일반 셸에서 실행할 수 있지만 호스트 Git 비밀번호/PAT/SSH 키는 자동으로 넘어오지 않는다.
+
+**위험:** OAuth 또는 모바일 Bearer 키가 탈취되거나 외부 콘텐츠가 도구 호출을 유도하면 작업장 전체의 파일 수정·삭제·외부 전송이 가능하다. 중요한 자료는 작업장 밖에 보관하고, 필요한 경우 별도 계정·키 회전·네트워크 제한을 유지한다. 이것은 관리자 root 셸이나 Docker 관리 권한을 승인 없이 개방하는 변경이 아니다.
+
+업데이트 후 테스트: `workspace_status`에서 `protected: []` 및 `network: enabled` 확인, `files_list(path="server")` 및 `terminal_run(command="curl -I https://example.com")` 확인. 실제 호스트/모바일 테스트는 소스 반영과 구분한다.
+
 ## 관리 대상 등록
 
 새 설치는 컨테이너·서비스·외부 파일·통신 호스트를 모두 빈 목록으로 시작한다. 예제에 있는 GitHub/npm/PyPI 도메인을 설치만으로 자동 허용하지 않는다.

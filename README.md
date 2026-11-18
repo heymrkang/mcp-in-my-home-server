@@ -59,9 +59,9 @@ update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행
 
 확장: task_start, task_status, task_list, task_cancel, git_local, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
 
-일반 작업장은 `/mnt/storage/dev`이며 소스 폴더 `server`는 작업에서 보호한다. 일반 셸은 오프라인·비관리자다. 긴 작업은 ID로 조회하고 중단한다. 외부 파일·Docker·서비스·네트워크 작업은 등록된 범위와 별도 승인만 허용한다. 임의 root 셸이나 Docker socket을 AI 작업에 주지 않는다.
+일반 작업장은 `/mnt/storage/dev`이며 `server`를 포함한 모든 하위 파일을 서비스 계정의 ACL 범위에서 읽고 쓸 수 있다. 일반 셸·긴 작업에서 인터넷을 사용할 수 있다. 비관리자 UID·파일시스템 격리는 유지한다. 긴 작업은 ID로 조회하고 중단한다. 작업장 밖 파일·Docker·서비스 관리 작업은 등록된 범위와 별도 승인만 허용한다. 임의 root 셸이나 Docker socket을 AI 작업에 주지 않는다.
 
-새 설치의 대상 목록은 비어 있다. 후보 정책을 로컬에서 편집하고 `sudo home-mcp policy /root/home-mcp-policy.json`으로 등록한다. 커널 BPF를 확인하지 못한 네트워크 작업은 실행하지 않는다. 개인 PAT/SSH 키를 일반 MCP 명령에 자동 전달하지 않으며, 무인 비공개 Git 원격 인증은 별도 미구현 범위다.
+새 설치의 대상 목록은 비어 있다. 후보 정책을 로컬에서 편집하고 `sudo home-mcp policy /root/home-mcp-policy.json`으로 등록한다. 별도 승인형 network.run은 여전히 커널 BPF 검증을 요구한다. 일반 터미널의 인터넷은 별도 network.run을 사용할 필요가 없다. 개인 PAT/SSH 키를 일반 MCP 명령에 자동 전달하지 않으며, 무인 비공개 Git 원격 인증은 별도 미구현 범위다.
 
 ## 저장 위치
 

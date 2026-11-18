@@ -20,10 +20,10 @@ def register(mcp, security):
 
     @mcp.tool(title="긴 작업 시작", annotations=write, meta=security)
     async def task_start(request_key: str, command: str, cwd: str = ".", timeout_seconds: int = 1800) -> CallToolResult:
-        """Start an explicitly detached OFFLINE sandbox job; returns a durable ID immediately.
+        """Start an explicitly detached internet-enabled sandbox job; returns a durable ID immediately.
         Use a fresh UUID request_key per intended job. Reuse that key after uncertain responses; never replay with a new key blindly.
-        Files are writable only within /mnt/storage/dev except server. Build/test/local Git supported where dependencies exist.
-        No network, Docker socket or root. Poll task_status for bounded logs; cancellation is not rollback."""
+        Files are writable throughout /mnt/storage/dev including server (OS ACL enforced).
+        Internet is available; no Docker socket or root. Poll task_status for bounded logs; cancellation is not rollback."""
         return await invoke(runner_call, "task_start", {"request_key": request_key, "task": {"command": command, "cwd": cwd, "timeout_seconds": timeout_seconds}})
 
     @mcp.tool(title="긴 작업 상태·로그", annotations=read, meta=security)
@@ -44,9 +44,9 @@ def register(mcp, security):
     @mcp.tool(title="로컬 Git 작업", annotations=write, meta=security)
     async def git_local(request_key: str, action: str, cwd: str = ".", paths: list[str] | None = None,
                         message: str | None = None, branch: str | None = None) -> CallToolResult:
-        """Create a sandbox task for status/diff/log/add/commit/switch. No destructive reset/clean, signing, hooks or network.
+        """Create a sandbox task for status/diff/log/add/commit/switch. No destructive reset/clean, signing or hooks.
         add requires explicit paths; commit requires a message; switch requires a branch. Git identity may be set in the repository.
-        Clone/fetch/push/package installation use separately approved admin_request action network.run."""
+        Use terminal_run or task_start for remote Git/HTTP/package commands without host credentials."""
         args = {"action": action, "cwd": cwd}
         for key, value in (("paths", paths), ("message", message), ("branch", branch)):
             if value is not None:

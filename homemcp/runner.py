@@ -70,9 +70,9 @@ async def serve():
             operation, args = request["operation"], request["arguments"]
             if operation == "workspace_status":
                 ensure_host_layout(config)
-                await write_frame(writer, {"ok": True, "phase": 2, "workspace": WORKSPACE, "protected": [SOURCE],
+                await write_frame(writer, {"ok": True, "phase": 2, "workspace": WORKSPACE, "protected": [],
                     "read_only_paths": list(config.read_only), "root_available_in_runner": False,
-                    "network": "disabled; separately approved broker jobs only", "max_command_seconds": config.timeout,
+                    "network": "enabled; no root or Docker socket", "max_command_seconds": config.timeout,
                     "max_task_seconds": policy["task_timeout_seconds"], "sandbox_startup_probe": "passed"})
                 return
             if operation in {"task_start", "git_task", "task_get", "task_list", "task_cancel"}:

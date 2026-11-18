@@ -8,7 +8,6 @@ import stat
 import sys
 
 ROOT = "/mnt/storage/dev"
-PROTECTED = ROOT + "/server"
 MAX_FILE = 1024 * 1024
 
 
@@ -29,7 +28,6 @@ def target(value, reads, writing=False):
     need(isinstance(value, str) and 0 < len(value) <= 4096 and not any(c in value for c in "\x00\r\n"), "INVALID_PATH")
     need(".." not in value.split("/"), "PATH_TRAVERSAL_REJECTED")
     path = os.path.normpath(value if value.startswith("/") else ROOT + "/" + value)
-    need(not inside(PROTECTED, path), "MCP_SOURCE_PROTECTED")
     need(inside(ROOT, path) or (not writing and any(inside(item, path) for item in reads)), "PATH_NOT_ALLOWED")
     return path
 
@@ -76,9 +74,6 @@ def list_files(args, reads):
                     truncated = True
                     break
                 item_path = path.rstrip("/") + "/" + item.name
-                if inside(PROTECTED, item_path):
-                    rows.append({"name": item.name, "type": "protected"})
-                    continue
                 info = item.stat(follow_symlinks=False)
                 kind = "link" if stat.S_ISLNK(info.st_mode) else "directory" if stat.S_ISDIR(info.st_mode) else "file" if stat.S_ISREG(info.st_mode) else "special"
                 rows.append({"name": item.name, "type": kind, "bytes": info.st_size})
