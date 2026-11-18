@@ -4,6 +4,8 @@
 
 ## 지원 환경과 변경 범위
 
+Ubuntu 24.04 호스트 진단(2026-11-18): `ProtectKernelLogs=yes`를 적용한 systemd 서비스 내부에서 bubblewrap이 `Can't mount proc on /newroot/proc: Operation not permitted`로 실패했고, 같은 조건에서 이 옵션만 제외하면 격리 명령 `/usr/bin/true`가 성공했다. 따라서 runner 서비스 정의에서 **이 옵션 하나만 제외**한다. AppArmor 제한·비관리자 UID·네트워크 격리·다른 systemd 보호 및 bubblewrap의 seccomp는 유지한다. 해당 테스트는 실사용 MCP 설치/도구 호출 검증이 아니므로 실제 설치 성공으로 표시하지 않는다.
+
 Linux, systemd, Python 3.11 이상, cgroup v2가 필요하다. 자동 패키지 설치는 Debian/Ubuntu를 대상으로 한다. 다른 배포판은 해당 패키지를 직접 설치하고 --no-packages를 사용해야 하며 그 환경의 동작을 보장하지 않는다. bubblewrap에는 --disable-userns와 --assert-userns-disabled가 있어야 한다. AppArmor/커널이 사용자 namespace를 막으면 설치가 실패한다. 전역 보안 정책을 끄거나 일반 호스트 셸로 fallback하지 않는다.
 
 기본 연결은 실행 중인 Coolify Traefik과 rootful Docker를 사용한다. Docker 사용자 namespace remapping/rootless, Caddy 컨테이너, 프록시를 파일 설정만으로 관리하는 경우에는 자동 연결을 거부한다. 프록시 종류·entrypoint·인증서 resolver를 추측해서 바꾸지 않는다. --proxy host는 호스트 프록시용 예제만 생성하며 그 예제를 기존 프록시에 반영하는 작업은 별도다.

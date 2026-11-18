@@ -29,7 +29,8 @@ PrivateNetwork=true
 InaccessiblePaths=-/var/lib/home-mcp/private -/var/lib/home-mcp-owner -/var/lib/home-mcp-broker -/run/home-mcp-broker.sock -/var/run/docker.sock
 ProtectControlGroups=true
 ProtectKernelModules=true
-ProtectKernelLogs=true
+# ProtectKernelLogs is intentionally omitted: Ubuntu 24.04 systemd
+# proc masking prevents nested bwrap --proc mount (verified with systemd-run).
 ProtectClock=true
 RestrictSUIDSGID=true
 RestrictRealtime=true
