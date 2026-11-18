@@ -2,6 +2,8 @@
 
 Use same-origin referrer policy: no-referrer can turn the Origin header into
 `null` on browser HTML form POST, breaking OAuth decision CSRF checks.
+Allow exactly chatgpt.com as an external form-action destination: Chromium
+checks that directive across the POST /oauth/decision 303 redirect chain.
 """
 import asyncio
 
@@ -11,7 +13,7 @@ from .config import Config
 
 HEADERS = [(b"cache-control", b"no-store"), (b"x-content-type-options", b"nosniff"),
            (b"referrer-policy", b"same-origin"), (b"x-frame-options", b"DENY"),
-           (b"content-security-policy", b"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")]
+           (b"content-security-policy", b"default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://chatgpt.com; frame-ancestors 'none'; base-uri 'none'")]
 
 
 class Guard:
