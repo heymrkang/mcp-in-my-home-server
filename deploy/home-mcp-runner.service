@@ -2,6 +2,8 @@
 Description=Home MCP unprivileged isolated runner and task manager
 Requires=home-mcp-runner.socket
 After=home-mcp-runner.socket
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -12,7 +14,7 @@ ExecStart=/usr/bin/python3 -B -m homemcp.runner
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 UMask=0077
 Restart=on-failure
-RestartSec=5
+RestartSec=10
 KillMode=control-group
 TimeoutStopSec=15
 NoNewPrivileges=true

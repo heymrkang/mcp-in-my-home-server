@@ -88,8 +88,8 @@ def verify(public=False):
         need(status in {200, 302, 303}, 'Approval page unavailable')
         need(headers.get('cache-control') == 'no-store', 'Approval response cache protection missing')
     def runner():
-        code = 'import asyncio,json; from homemcp.runner_client import call; print(json.dumps(asyncio.run(call("workspace_status",{}))))'
-        raw = run(['runuser', '-u', 'home-mcp', '--', str(ROOT / 'venv/bin/python'), '-B', '-c', code], cwd=ROOT / 'app', capture=True, timeout=45)
+        code = 'import asyncio,json; from homemcp.runner_client import call; print(json.dumps(asyncio.run(asyncio.wait_for(call("workspace_status",{}), 10))))'
+        raw = run(['runuser', '-u', 'home-mcp', '--', str(ROOT / 'venv/bin/python'), '-B', '-c', code], cwd=ROOT / 'app', capture=True, timeout=15)
         result = json.loads(raw)
         need(result.get('ok') is True, 'Runner IPC/startup sandbox probe failed')
     check('services', units)

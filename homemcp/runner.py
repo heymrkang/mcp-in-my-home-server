@@ -34,7 +34,15 @@ async def serve():
     require(set(os.getgroups()) <= {runner.pw_gid} and os.getegid() == runner.pw_gid, "RUNNER_EXTRA_GROUPS_FORBIDDEN")
     ensure_host_layout(config)
     probe = await execute(config, {"operation": "terminal_run", "arguments": {"command": "/usr/bin/true", "timeout_seconds": min(5, config.timeout)}})
-    require(probe.get("ok") is True, "SANDBOX_PREFLIGHT_FAILED")
+    if probe.get("ok") is not True:
+        # Only the fixed built-in /usr/bin/true is ever run in this probe.
+        # No tool/user arguments or credentials enter this diagnostic.
+        detail = {"event": "sandbox_preflight_failed",
+                  "error": probe.get("error"),
+                  "exit_code": probe.get("exit_code"),
+                  "stderr": str(probe.get("stderr", ""))[:1200]}
+        print(json.dumps(detail, ensure_ascii=False), flush=True)
+        require(False, "SANDBOX_PREFLIGHT_FAILED")
     require(os.environ.get("LISTEN_PID") == str(os.getpid()) and os.environ.get("LISTEN_FDS") == "1", "SYSTEMD_SOCKET_REQUIRED")
     listener = socket.socket(fileno=3)
     require(listener.family == socket.AF_UNIX, "UNIX_SOCKET_REQUIRED")
