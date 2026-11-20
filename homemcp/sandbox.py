@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .config import Config, INSTALL, PolicyError, SOURCE, WORKSPACE, require, within
 
-OPERATIONS = {"files_list", "files_read", "files_write", "files_mkdir", "terminal_run"}
+OPERATIONS = {"files_list", "files_read", "files_image", "files_write", "files_mkdir", "terminal_run"}
 
 
 def seccomp_file():
@@ -120,7 +120,8 @@ async def execute(config: Config, request: dict) -> dict:
     operation, params = request["operation"], request["arguments"]
     timeout = params.get("timeout_seconds", config.timeout) if operation == "terminal_run" else 15
     require(type(timeout) is int and 1 <= timeout <= config.timeout, "INVALID_TIMEOUT")
-    output_limit = config.output_limit if operation == "terminal_run" else 512 * 1024
+    output_limit = (config.output_limit if operation == "terminal_run" else
+                    2 * 1024 * 1024 if operation == "files_image" else 512 * 1024)
     data = json.dumps({**request, "read_only": list(config.read_only)}, ensure_ascii=False).encode()
     require(len(data) <= 2 * 1024 * 1024, "REQUEST_TOO_LARGE")
     process = None

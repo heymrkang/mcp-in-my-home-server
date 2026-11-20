@@ -61,13 +61,22 @@ update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행
 
 ## 도구와 권한
 
-기본: workspace_status, files_list, files_read, files_write, files_mkdir, terminal_run.
+기본: workspace_status, files_list, files_read, files_image, files_write, files_mkdir, terminal_run.
 
 확장: task_start, task_status, task_list, task_cancel, git_local, host_run, admin_catalog, admin_request, admin_status, admin_execute, admin_cancel.
 
 일반 작업장은 `/mnt/storage/dev`이며 `server`를 포함한 모든 하위 파일을 서비스 계정의 ACL 범위에서 읽고 쓸 수 있다. 일반 셸·긴 작업에서 인터넷을 사용할 수 있다. 비관리자 UID·파일시스템 격리는 유지한다. 긴 작업은 ID로 조회하고 중단한다. 작업장 밖 파일·Docker·서비스 관리 작업은 등록된 범위와 별도 승인만 허용한다. host_run은 root 셸과 Docker CLI를 호스트에서 사용할 수 있다.
 
 새 설치의 대상 목록은 비어 있다. 후보 정책을 로컬에서 편집하고 `sudo home-mcp policy /root/home-mcp-policy.json`으로 등록한다. 별도 승인형 network.run은 여전히 커널 BPF 검증을 요구한다. 일반 터미널의 인터넷은 별도 network.run을 사용할 필요가 없다. 개인 PAT/SSH 키를 일반 MCP 명령에 자동 전달하지 않으며, 무인 비공개 Git 원격 인증은 별도 미구현 범위다.
+
+### Godot PNG를 ChatGPT에 직접 표시
+
+`files_image(path="/mnt/storage/dev/runtime/godot/screenshots/todayrunner-latest.png")`를 호출하면
+허용된 경로의 PNG 파일(최대 1 MiB)을 MCP `ImageContent`로 전송한다. 기존 파일 접근 정책을
+적용하며 경로 탐색, 심볼릭 링크/하드링크, PNG가 아닌 데이터, 과도한 이미지 크기를 거부한다.
+비밀 토큰이나 공개 이미지 URL이 필요하지 않다. MCP 이미지 콘텐츠를 지원하는 대화 클라이언트에서
+화면에 표시할 수 있지만, 채팅 첨부파일/다운로드 기능과는 별개이며 실제 연동 검증이 필요하다.
+운영 서비스는 별도 배포 전까지 변경되지 않는다.
 
 ## 저장 위치
 

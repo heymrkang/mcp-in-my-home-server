@@ -10,7 +10,7 @@ from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from mcp.types import CallToolResult, TextContent, ToolAnnotations
+from mcp.types import CallToolResult, ImageContent, TextContent, ToolAnnotations
 from pydantic import AnyHttpUrl
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -79,6 +79,25 @@ def create_app():
     async def files_read(path: str, offset: int = 0, limit: int = 32768) -> CallToolResult:
         """Read UTF-8 and a SHA256 for files <=1 MiB. No symlinks, sockets, devices or unapproved paths."""
         return await invoke("files_read", {"path": path, "offset": offset, "limit": limit})
+
+    @mcp.tool(title="PNG 이미지 읽기", annotations=read, meta=security)
+    async def files_image(path: str) -> CallToolResult:
+        """Read a bounded PNG and return native MCP image content for supported clients.
+        Paths follow files_read access checks; no public image URL is created."""
+        try:
+            response = await call("files_image", {"path": path})
+        except PolicyError as exc:
+            response = {"ok": False, "error": str(exc)}
+        if not response.get("ok", False):
+            return CallToolResult(
+                content=[TextContent(type="text", text=json.dumps(response, ensure_ascii=False))],
+                structuredContent=response, isError=True)
+        result = response["result"]
+        metadata = {key: result[key] for key in ("path", "mime_type", "width", "height", "bytes", "sha256")}
+        return CallToolResult(
+            content=[ImageContent(type="image", mimeType="image/png", data=result["data"]),
+                     TextContent(type="text", text=json.dumps(metadata, ensure_ascii=False))],
+            structuredContent={"ok": True, "result": metadata}, isError=False)
 
     @mcp.tool(title="파일 쓰기", annotations=write, meta=security)
     async def files_write(path: str, content: str, expected_sha256: str | None = None) -> CallToolResult:

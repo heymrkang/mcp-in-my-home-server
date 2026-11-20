@@ -1,14 +1,18 @@
 """Runs ONLY inside the filesystem/network sandbox. Standard-library only."""
+import base64
 import fcntl
 import hashlib
 import json
 import os
 import re
 import stat
+import struct
+import zlib
 import sys
 
 ROOT = "/mnt/storage/dev"
 MAX_FILE = 1024 * 1024
+MAX_IMAGE = 1024 * 1024  # Fits a 2 MiB runner frame after base64 encoding.
 
 
 class Denied(Exception):
@@ -98,6 +102,32 @@ def read_file(args, reads):
         os.close(fd)
 
 
+
+def read_image(args, reads):
+    """Read a size-bounded PNG through the existing no-symlink path policy."""
+    need(isinstance(args, dict) and set(args) == {"path"}, "INVALID_IMAGE_ARGUMENTS")
+    path = target(args["path"], reads)
+    need(path.lower().endswith(".png"), "IMAGE_TYPE_UNSUPPORTED")
+    fd = open_file(path, os.O_RDONLY)
+    try:
+        size = os.fstat(fd).st_size
+        need(33 <= size <= MAX_IMAGE, "IMAGE_SIZE_INVALID")
+        data = os.pread(fd, size, 0)
+        need(len(data) == size, "IMAGE_CHANGED_DURING_READ")
+        need(data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR"
+             and struct.unpack(">I", data[8:12])[0] == 13, "INVALID_PNG")
+        width, height = struct.unpack(">II", data[16:24])
+        need(1 <= width <= 4096 and 1 <= height <= 4096 and width * height <= 8_000_000,
+             "IMAGE_DIMENSIONS_INVALID")
+        need(struct.unpack(">I", data[29:33])[0] == (zlib.crc32(data[12:29]) & 0xffffffff),
+             "INVALID_PNG")
+        return {"path": path, "mime_type": "image/png", "width": width, "height": height,
+                "bytes": size, "sha256": hashlib.sha256(data).hexdigest(),
+                "data": base64.b64encode(data).decode("ascii")}
+    finally:
+        os.close(fd)
+
+
 def write_file(args, reads):
     path = target(args.get("path"), reads, writing=True)
     need(path != ROOT, "INVALID_FILE_PATH")
@@ -155,7 +185,7 @@ def run(request):
         os.execve("/bin/bash", ["bash", "--noprofile", "--norc", "-c", command],
                   {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp/home", "TMPDIR": "/tmp",
                    "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TERM": "dumb"})
-    functions = {"files_list": list_files, "files_read": read_file, "files_write": write_file, "files_mkdir": mkdir}
+    functions = {"files_list": list_files, "files_read": read_file, "files_image": read_image, "files_write": write_file, "files_mkdir": mkdir}
     need(operation in functions, "UNKNOWN_OPERATION")
     return functions[operation](args, reads)
 
