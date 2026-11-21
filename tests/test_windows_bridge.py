@@ -2,6 +2,8 @@
 import asyncio
 import json
 import tempfile
+import time
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -60,6 +62,61 @@ class WindowsBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.hub.devices()[1]["online"])
         rejected = await self.hub.poll(Request("office-desktop", self.office))
         self.assertEqual(rejected.status_code, 401)
+
+    async def test_unicode_dispatch_and_late_result_after_timeout(self):
+        # Unicode must reach the Windows poll response as valid UTF-8.
+        self.hub._seen("home-desktop")
+        payload_text = "ASCII 가나다 é Ω 😀"
+        with patch("homemcp.windows_bridge.MAX_TOOL_WAIT", 1):
+            waiting = asyncio.create_task(
+                self.hub.invoke("home-desktop", "windows_files_write",
+                                {"path": "C:\\\\tmp\\\\utf8.txt", "content": payload_text}))
+            await asyncio.sleep(0.1)
+            response = await self.hub.poll(Request("home-desktop", self.home))
+            self.assertIn("charset=utf-8", response.headers["content-type"])
+            job = json.loads(response.body.decode("utf-8"))
+            self.assertEqual(job["job"]["arguments"]["content"], payload_text)
+            timeout = await asyncio.wait_for(waiting, timeout=3)
+            self.assertEqual(timeout["error"], "WINDOWS_RESULT_TIMEOUT")
+            self.assertTrue(timeout["effects_unknown"])
+            self.assertFalse(timeout["auto_retried"])
+        identifier = job["job"]["id"]
+        self.assertEqual(self.hub.request_status("home-desktop", identifier)["state"],
+                         "UNKNOWN")
+        result_payload = {"id": identifier, "result": {
+            "isError": False, "structuredContent": {"ok": True, "content": payload_text},
+        }}
+        accepted = await self.hub.result(Request("home-desktop", self.home, result_payload))
+        self.assertEqual(accepted.status_code, 200)
+        state = self.hub.request_status("home-desktop", identifier)
+        self.assertEqual(state["state"], "DONE")
+        self.assertEqual(state["result"]["content"], payload_text)
+
+    async def test_stale_running_request_reports_unknown_without_mutation(self):
+        self.hub._seen("home-desktop")
+        waiter = asyncio.create_task(
+            self.hub.invoke("home-desktop", "windows_info", {}))
+        await asyncio.sleep(0.1)
+        response = await self.hub.poll(Request("home-desktop", self.home))
+        identifier = json.loads(response.body)["job"]["id"]
+        with self.hub._connect() as db:
+            db.execute("UPDATE requests SET updated=? WHERE id=?",
+                       (time.time() - 1000, identifier))
+        status = self.hub.request_status("home-desktop", identifier)
+        self.assertEqual(status["state"], "UNKNOWN")
+        self.assertEqual(status["recorded_state"], "RUNNING")
+        self.assertTrue(status["effects_unknown"])
+        # The status lookup must not prevent a subsequently delivered result.
+        with self.hub._connect() as db:
+            state = db.execute("SELECT state FROM requests WHERE id=?",
+                               (identifier,)).fetchone()["state"]
+        self.assertEqual(state, "RUNNING")
+        accepted = await self.hub.result(Request("home-desktop", self.home, {
+            "id": identifier, "result": {
+                "isError": False, "structuredContent": {"ok": True}}}))
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual((await asyncio.wait_for(waiter, timeout=2))
+                         ["structuredContent"]["ok"], True)
 
     async def test_validation(self):
         with self.assertRaises(ValueError):

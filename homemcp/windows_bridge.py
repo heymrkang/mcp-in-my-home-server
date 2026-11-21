@@ -168,9 +168,11 @@ class WindowsHub:
                 return JSONResponse({"ok": True, "job": {
                     "id": row["id"], "action": row["action"],
                     "arguments": json.loads(row["args"]),
-                }}, headers={"Cache-Control": "no-store"})
+                }}, headers={"Cache-Control": "no-store"},
+                    media_type="application/json; charset=utf-8")
             await asyncio.sleep(0.5)
-        return JSONResponse({"ok": True, "job": None}, headers={"Cache-Control": "no-store"})
+        return JSONResponse({"ok": True, "job": None}, headers={"Cache-Control": "no-store"},
+                            media_type="application/json; charset=utf-8")
 
     async def result(self, request):
         device = self._authorized(request)
@@ -196,9 +198,12 @@ class WindowsHub:
                              (identifier, device)).fetchone()
             if row is None:
                 return JSONResponse({"error": "UNKNOWN_REQUEST"}, status_code=404)
-            if row["state"] == "RUNNING":
+            # A request may time out on the MCP side after the Agent claimed it.
+            # Accept the late result once; never dispatch the command twice.
+            if row["state"] in ("RUNNING", "UNKNOWN"):
                 db.execute("UPDATE requests SET state='DONE',result=?,updated=? WHERE id=? "
-                           "AND state='RUNNING'", (as_json(payload), time.time(), identifier))
+                           "AND state IN ('RUNNING','UNKNOWN')",
+                           (as_json(payload), time.time(), identifier))
             elif row["state"] != "DONE":
                 return JSONResponse({"error": "REQUEST_NOT_RUNNING"}, status_code=409)
         self._seen(device)
@@ -215,15 +220,25 @@ class WindowsHub:
         if not isinstance(identifier, str) or not REQUEST_ID.fullmatch(identifier):
             return {"ok": False, "error": "INVALID_REQUEST_ID"}
         with self._connect() as db:
-            row = db.execute("SELECT state, result FROM requests WHERE id=? AND device=?",
-                             (identifier, device)).fetchone()
+            row = db.execute("SELECT state, result, updated FROM requests "
+                             "WHERE id=? AND device=?", (identifier, device)).fetchone()
         if row is None:
             return {"ok": False, "error": "REQUEST_NOT_FOUND"}
         result = json.loads(row["result"]) if row["result"] else None
         if isinstance(result, dict):
             result = result.get("structuredContent", result)
-        return {"ok": True, "request_id": identifier,
-                "state": row["state"], "result": result}
+        # Older RUNNING rows (including pre-upgrade requests) may have lost
+        # their Agent connection. Surface UNKNOWN without mutating a read.
+        stale = (row["state"] == "RUNNING"
+                 and time.time() - row["updated"] >= MAX_TOOL_WAIT)
+        state = "UNKNOWN" if stale else row["state"]
+        response = {"ok": True, "request_id": identifier,
+                    "state": state, "result": result}
+        if state == "UNKNOWN":
+            response["effects_unknown"] = True
+        if stale:
+            response["recorded_state"] = "RUNNING"
+        return response
 
     async def invoke(self, device: str, action: str, arguments: dict):
         validate_device(device)
@@ -259,13 +274,22 @@ class WindowsHub:
             if row is not None and row["state"] == "CANCELLED":
                 return {"ok": False, "error": "REQUEST_CANCELLED"}
         with self._connect() as db:
+            # CANCELLED was never claimed. UNKNOWN was claimed and could
+            # still complete; a late Agent result is accepted as DONE.
+            now = time.time()
             db.execute("UPDATE requests SET state='CANCELLED', updated=? "
-                       "WHERE id=? AND state='QUEUED'", (time.time(), identifier))
-            row = db.execute("SELECT state FROM requests WHERE id=?", (identifier,)).fetchone()
+                       "WHERE id=? AND state='QUEUED'", (now, identifier))
+            db.execute("UPDATE requests SET state='UNKNOWN', updated=? "
+                       "WHERE id=? AND state='RUNNING'", (now, identifier))
+            row = db.execute("SELECT state,result FROM requests WHERE id=?",
+                             (identifier,)).fetchone()
+        # Agent completion could race the timeout boundary.
+        if row and row["state"] == "DONE" and row["result"]:
+            return json.loads(row["result"])
         return {
             "ok": False, "error": "WINDOWS_RESULT_TIMEOUT",
             "request_id": identifier,
-            "effects_unknown": bool(row and row["state"] == "RUNNING"),
+            "effects_unknown": bool(row and row["state"] == "UNKNOWN"),
             "auto_retried": False,
         }
 
