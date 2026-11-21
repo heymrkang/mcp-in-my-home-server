@@ -93,6 +93,14 @@ windows_task_start, windows_screen 등 Windows 도구가 추가된다.
 - 오류 DEVICE_OFFLINE: Windows Agent가 꺼져 있거나 최근 체크인이 없음.
 - 오류 WINDOWS_RESULT_TIMEOUT: 작업 결과가 불명확하다. windows_request_status로 ID를
   확인하고 실제 PC 상태를 조사하라. **삭제·수정·Git push 등을 무작정 재실행하지 마라.**
+- Windows Agent v0.2.2부터 수동 CMD 콘솔의 QuickEdit 선택 모드를 실행 중에 비활성화한다.
+  콘솔 선택으로 프로세스가 일시 정지되어 ONLINE 체크인이 끊기는 상황을 방지하기 위해서다.
+- Agent는 단일 루프에서 명령을 실행하므로 실행 중 일시적으로 Poll이 지연될 수 있다.
+  서버 ONLINE 판정은 마지막 유효 Poll/Result로부터 150초 이내다. 장치가 실제로
+  응답할 수 있는지 여부는 windows_info 등으로 별도 검증해야 한다.
+- 결과 전송 실패는 요청을 자동 재실행하지 않고 Outbox에 보존하며,
+  Agent는 다른 작업 Poll을 계속 시도한다. Agent logs/server.log에는 request ID,
+  실행 단계, HTTP 상태·예외 종류만 기록하고 인증정보/명령 내용은 기록하지 않는다.
 - 오류 GUI_UNAVAILABLE: Windows에 로그인하여 잠금 해제하고 GUI 도우미를 실행.
 - 동일 ZIP을 PC 여러 대에 복제할 때 data/agent.json을 같이 복사하지 않는다.
   별도 등록키를 입력해야 장치가 구분된다.

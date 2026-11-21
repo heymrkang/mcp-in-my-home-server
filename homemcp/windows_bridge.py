@@ -10,6 +10,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import pwd
 import re
@@ -37,8 +38,12 @@ ACTIONS = frozenset({
 })
 MAX_ARGUMENT = 1536 * 1024
 MAX_RESULT = 2 * 1024 * 1024 - 32768
-ONLINE_SECONDS = 70
+# A synchronous Windows command can take 60s and posting its result can take
+# another 40s. Keep the agent lease long enough for that bounded operation,
+# without declaring a permanently stalled/disconnected agent ONLINE.
+ONLINE_SECONDS = 150
 MAX_TOOL_WAIT = 75
+LOG = logging.getLogger(__name__)
 
 
 def validate_device(device: str) -> str:
@@ -201,6 +206,9 @@ class WindowsHub:
             # A request may time out on the MCP side after the Agent claimed it.
             # Accept the late result once; never dispatch the command twice.
             if row["state"] in ("RUNNING", "UNKNOWN"):
+                if row["state"] == "UNKNOWN":
+                    LOG.warning("windows_late_result device=%s request_id=%s",
+                                device, identifier)
                 db.execute("UPDATE requests SET state='DONE',result=?,updated=? WHERE id=? "
                            "AND state IN ('RUNNING','UNKNOWN')",
                            (as_json(payload), time.time(), identifier))
@@ -286,6 +294,10 @@ class WindowsHub:
         # Agent completion could race the timeout boundary.
         if row and row["state"] == "DONE" and row["result"]:
             return json.loads(row["result"])
+        final_state = row["state"] if row is not None else "MISSING"
+        LOG.warning("windows_request_timeout device=%s action=%s request_id=%s "
+                    "state=%s auto_retried=false",
+                    device, action, identifier, final_state)
         return {
             "ok": False, "error": "WINDOWS_RESULT_TIMEOUT",
             "request_id": identifier,

@@ -118,6 +118,22 @@ class WindowsBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await asyncio.wait_for(waiter, timeout=2))
                          ["structuredContent"]["ok"], True)
 
+    async def test_online_lease_covers_bounded_windows_run(self):
+        # The Agent cannot poll while a synchronous command is executing.
+        # Do not show OFFLINE merely because a legitimate bounded call is running.
+        from homemcp.windows_bridge import ONLINE_SECONDS
+        self.assertGreaterEqual(ONLINE_SECONDS, 60 + 40 + 10)
+        self.hub._seen("home-desktop")
+        import time
+        with self.hub._connect() as db:
+            db.execute("UPDATE devices SET last_seen=? WHERE device=?",
+                       (time.time() - 110, "home-desktop"))
+        self.assertTrue(self.hub.devices()[0]["online"])
+        with self.hub._connect() as db:
+            db.execute("UPDATE devices SET last_seen=? WHERE device=?",
+                       (time.time() - ONLINE_SECONDS - 5, "home-desktop"))
+        self.assertFalse(self.hub.devices()[0]["online"])
+
     async def test_validation(self):
         with self.assertRaises(ValueError):
             self.hub.enroll("../evil")
