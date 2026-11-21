@@ -35,7 +35,7 @@ class Guard:
             return await reject(403)
         if scope["method"] not in {"GET", "HEAD", "POST", "DELETE"}:
             return await reject(405)
-        cap = 2 * 1024 * 1024 if scope["path"] == "/mcp" else 16384
+        cap = 2 * 1024 * 1024 if scope["path"] in {"/mcp", "/windows-agent/v1/result"} else 16384
         body = bytearray()
         async def collect():
             while True:

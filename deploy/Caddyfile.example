@@ -7,7 +7,7 @@ k9m2x7p4vq3b8z1.12190529.xyz {
             header_up Host k9m2x7p4vq3b8z1.12190529.xyz
         }
     }
-    @mcp path /mcp /oauth/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/* /health
+    @mcp path /mcp /oauth/* /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/* /health /windows-agent/v1/*
     handle @mcp {
         reverse_proxy 127.0.0.1:18790 {
             header_up Host k9m2x7p4vq3b8z1.12190529.xyz

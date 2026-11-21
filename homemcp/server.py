@@ -21,6 +21,7 @@ from .http_guard import Guard
 from .oauth import OAuth
 from .runner_client import call
 from .phase2_tools import register as register_phase2
+from .windows_bridge import WindowsHub, register_windows
 
 
 def create_app():
@@ -118,10 +119,13 @@ def create_app():
         return await invoke("terminal_run", {"command": command, "cwd": cwd, "timeout_seconds": timeout_seconds})
 
     register_phase2(mcp, security)
+    windows_hub = WindowsHub()
+    register_windows(mcp, security, windows_hub)
     async def health(_request):
         return JSONResponse({"application": "home-mcp", "phase": 2, "alive": True, "validation": "NOT_RUN"})
     app = mcp.streamable_http_app()
     app.router.routes.extend(OAuth(config, store).routes())
+    app.router.routes.extend(windows_hub.routes())
     app.router.routes.append(Route("/health", health, methods=["GET"]))
     return Guard(app, config), config
 

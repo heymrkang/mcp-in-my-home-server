@@ -95,4 +95,6 @@ update는 기존 키·정책·DB·작업장을 유지하고 커밋된 새 실행
 
 `.gitignore`를 만들지 않는다. 실제 비밀값·DB·로그·wheel·가상환경은 저장소 밖에 생성한다. 첫 설치에서 플랫폼별 의존성을 해석해 버전/해시를 기록하고 이후 재사용한다. 작성 시점에 실제 의존성 설치·빌드·테스트를 수행한 것은 아니다.
 
+Windows PC 연결: **docs/WINDOWS_BRIDGE.md** (기존 MCP 연결 하나로 다중 Windows PC 관리).
+
 문서: docs/PHASE3.md(현재 설치 절차), docs/PHASE2.md(관리/승인 계약), docs/PHASE1.md, docs/SECURITY.md. 과거 단계의 '설치기 미구현' 표시는 PHASE3의 현재 상태로 대체한다.
